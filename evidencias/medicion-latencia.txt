@@ -1,0 +1,6 @@
+# Medición local: Windows 11, Node v24.18.0, PostgreSQL 16 en Docker Desktop, 2026-10-29
+Muestras por escenario: 60 (secuenciales, tras 5 de calentamiento)
+Escenario                      mediana (ms)   p95 (ms)
+Sin Idempotency-Key                   406.3      610.0
+Con llave nueva                       428.8      630.0
+Repetición (misma llave)               15.5       29.7

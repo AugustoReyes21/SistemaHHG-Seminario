@@ -68,9 +68,13 @@ Con el servidor corriendo y la base de demo cargada:
 
 ```bash
 node scripts/demo-idempotencia.js     # misma venta x3, 5 envíos simultáneos, 422, 400 y 409
+node scripts/medir-latencia.js        # costo: 60 ventas sin llave, con llave y repetidas
 ```
 
-Salida esperada (ver `evidencias/demo-idempotencia.txt`): tres intentos con la misma llave devuelven
+Medición local (`evidencias/medicion-latencia.txt`): mediana 406 ms sin llave, 429 ms con llave y 16 ms
+en una repetición (no vuelve a ejecutar la venta).
+
+Salida esperada de la demo (ver `evidencias/demo-idempotencia.txt`): tres intentos con la misma llave devuelven
 la misma venta (`HTTP 200 (repetida)`), cinco envíos simultáneos crean una sola venta y el resto recibe
 409; al final hay +2 ventas y −3 unidades.
 
@@ -115,7 +119,7 @@ las respuestas y los códigos de error:
 - `server/routes/sales.js` — ruta `/register_sale`: middleware, `markCommitted` dentro de la transacción, errores 409/422
 - `server/utils/httpError.js` y manejador de errores en `server/app.js`
 - `ventas.html` — `prepareSaleAttempt()`: una llave por intento, reenvío del mismo cuerpo al reintentar
-- `docs/api/register_sale.openapi.yaml`, `scripts/demo-idempotencia.js`, `scripts/seed-demo.js`
+- `docs/api/register_sale.openapi.yaml`, `scripts/demo-idempotencia.js`, `scripts/medir-latencia.js`, `scripts/seed-demo.js`
 
 **Aporte 2 — Pruebas de integración**
 
@@ -124,7 +128,7 @@ las respuestas y los códigos de error:
 - `tests/unit/idempotency-utils.test.js` — funciones puras
 - `tests/helpers/db.js`, `tests/setup-env.js` — esquema real, datos semilla, sesión JWT
 - `server/app.js` — `createApp()` separado de `index.js` para probar sin abrir puerto
-- `server/utils/dbMaintenance.js` — corrección del bloqueo en la primera venta, que detectaron las pruebas
+- `server/utils/dbMaintenance.js` — corrige dos defectos de instalaciones nuevas que detectaron las pruebas: la primera venta se colgaba (esquema contable creado dentro de la transacción) y dos primeras ventas simultáneas fallaban con 500 (índices creados durante la venta)
 - `docker-compose.yml` (`db-test`), `.env.test.example`, `.github/workflows/tests.yml`
 - `evidencias/` — resultados, defectos introducidos, capturas
 

@@ -1,10 +1,10 @@
-# npm test  (2026-10-29 23:19, Node v24.18.0, PostgreSQL 16 en Docker)
-✔ acepta UUID y llaves alfanuméricas de 8 a 100 caracteres (0.9523ms)
-✔ rechaza llaves vacías, cortas, largas o con caracteres no permitidos (0.1978ms)
-✔ canonicalize ordena llaves en todos los niveles (0.2772ms)
-✔ canonicalize ignora propiedades undefined pero conserva null (0.167ms)
-✔ hashRequest: mismo contenido -> mismo hash; cualquier cambio -> hash distinto (0.7642ms)
-✔ el orden de los ítems sí importa (es otra venta) (0.1693ms)
+# npm test  (2026-10-29 23:37, Node v24.18.0, PostgreSQL 16 en Docker)
+✔ acepta UUID y llaves alfanuméricas de 8 a 100 caracteres (0.5369ms)
+✔ rechaza llaves vacías, cortas, largas o con caracteres no permitidos (0.1124ms)
+✔ canonicalize ordena llaves en todos los niveles (0.1505ms)
+✔ canonicalize ignora propiedades undefined pero conserva null (0.0954ms)
+✔ hashRequest: mismo contenido -> mismo hash; cualquier cambio -> hash distinto (0.4428ms)
+✔ el orden de los ítems sí importa (es otra venta) (0.0937ms)
 ℹ tests 6
 ℹ suites 0
 ℹ pass 6
@@ -12,42 +12,42 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 115.8098
+ℹ duration_ms 64.5407
 ▶ Reintentos de la misma venta
-  ✔ reenviar la misma llave devuelve la venta original y no descuenta stock dos veces (604.104ms)
-  ✔ cinco envíos simultáneos con la misma llave crean una sola venta (495.4155ms)
-  ✔ sin llave, dos envíos idénticos crean dos ventas (el riesgo que se corrige) (823.7378ms)
-✔ Reintentos de la misma venta (2516.0338ms)
+  ✔ reenviar la misma llave devuelve la venta original y no descuenta stock dos veces (261.4679ms)
+  ✔ cinco envíos simultáneos con la misma llave crean una sola venta (193.766ms)
+  ✔ sin llave, dos envíos idénticos crean dos ventas (el riesgo que se corrige) (335.0911ms)
+✔ Reintentos de la misma venta (1138.5703ms)
 ▶ Reglas del contrato
-  ✔ la misma llave con otro contenido se rechaza con 422 (499.3248ms)
-  ✔ el orden de los campos no cambia la identidad de la solicitud (435.9302ms)
-  ✔ rechaza una llave con formato inválido (corta...) con 400 (81.2367ms)
-  ✔ rechaza una llave con formato inválido (tiene espaci...) con 400 (73.0946ms)
-  ✔ rechaza una llave con formato inválido (xxxxxxxxxxxx...) con 400 (76.2339ms)
-  ✔ rechaza una llave con formato inválido (acentuación-...) con 400 (86.9154ms)
-  ✔ las llaves son por usuario: dos cajeros con la misma llave no se bloquean (803.3793ms)
-✔ Reglas del contrato (2057.5299ms)
+  ✔ la misma llave con otro contenido se rechaza con 422 (190.9681ms)
+  ✔ el orden de los campos no cambia la identidad de la solicitud (189.3919ms)
+  ✔ rechaza una llave con formato inválido (corta...) con 400 (36.4012ms)
+  ✔ rechaza una llave con formato inválido (tiene espaci...) con 400 (39.4756ms)
+  ✔ rechaza una llave con formato inválido (xxxxxxxxxxxx...) con 400 (38.3964ms)
+  ✔ rechaza una llave con formato inválido (acentuación-...) con 400 (37.3834ms)
+  ✔ las llaves son por usuario: dos cajeros con la misma llave no se bloquean (339.3054ms)
+✔ Reglas del contrato (871.8675ms)
 ▶ Errores, expiración y recuperación
-  ✔ un rechazo de negocio libera la llave: tras reponer stock el reintento sí registra (699.7526ms)
-  ✔ si el proceso cae tras confirmar la venta, el reintento recupera la venta sin duplicarla (472.9078ms)
-  ✔ una reserva abandonada en "processing" se retoma después del tiempo límite (449.6256ms)
-  ✔ una llave vencida (más de 24 h) puede reutilizarse para una venta nueva (758.601ms)
-✔ Errores, expiración y recuperación (2381.3964ms)
+  ✔ un rechazo de negocio libera la llave: tras reponer stock el reintento sí registra (298.298ms)
+  ✔ si el proceso cae tras confirmar la venta, el reintento recupera la venta sin duplicarla (197.3515ms)
+  ✔ una reserva abandonada en "processing" se retoma después del tiempo límite (197.0362ms)
+  ✔ una llave vencida (más de 24 h) puede reutilizarse para una venta nueva (333.2034ms)
+✔ Errores, expiración y recuperación (1026.1692ms)
 ▶ Registro de venta con lotes (FEFO)
-  ✔ descuenta primero el lote que vence antes y deja todo consistente (619.5992ms)
-  ✔ avisa cuando el lote vendido vence pronto (436.6244ms)
-  ✔ no vende lotes vencidos aunque tengan existencia (316.8954ms)
-✔ Registro de venta con lotes (FEFO) (2020.1041ms)
+  ✔ descuenta primero el lote que vence antes y deja todo consistente (244.4622ms)
+  ✔ avisa cuando el lote vendido vence pronto (198.4265ms)
+  ✔ no vende lotes vencidos aunque tengan existencia (131.9022ms)
+✔ Registro de venta con lotes (FEFO) (864.9303ms)
 ▶ Atomicidad y reglas de negocio
-  ✔ si un ítem no tiene stock suficiente se revierte toda la venta (332.709ms)
-  ✔ rechaza efectivo recibido menor al total (422) sin tocar inventario (315.9316ms)
-  ✔ exige caja abierta (97.8834ms)
-  ✔ exige el nombre del comprobante (92.3222ms)
-  ✔ rechaza solicitudes sin sesión (401) (66.598ms)
-✔ Atomicidad y reglas de negocio (906.2737ms)
+  ✔ si un ítem no tiene stock suficiente se revierte toda la venta (141.5305ms)
+  ✔ rechaza efectivo recibido menor al total (422) sin tocar inventario (133.8619ms)
+  ✔ exige caja abierta (45.1889ms)
+  ✔ exige el nombre del comprobante (40.9076ms)
+  ✔ rechaza solicitudes sin sesión (401) (32.053ms)
+✔ Atomicidad y reglas de negocio (393.9572ms)
 ▶ Concurrencia
-  ✔ dos cajeros venden la última unidad a la vez: solo uno lo logra y el stock nunca queda negativo (454.8918ms)
-✔ Concurrencia (455.3152ms)
+  ✔ dos cajeros venden la última unidad a la vez: solo uno lo logra y el stock nunca queda negativo (171.4214ms)
+✔ Concurrencia (171.574ms)
 ℹ tests 23
 ℹ suites 6
 ℹ pass 23
@@ -55,4 +55,4 @@
 ℹ cancelled 0
 ℹ skipped 0
 ℹ todo 0
-ℹ duration_ms 12808.1476
+ℹ duration_ms 5694.8702

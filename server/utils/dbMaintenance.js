@@ -2,6 +2,11 @@ const { query, tableExists, columnExists, quoteIdent } = require('../db');
 const { ensureErrorsTable } = require('./errors');
 const { runMigrations } = require('./migrations');
 const { ensureAccountingSchema } = require('../accounting');
+const {
+  ensureProductTypeColumn,
+  ensureComboItemsTable,
+  ensureLotSaleProductColumn
+} = require('./productCatalog');
 
 async function ensureIndex(table, name, columns) {
   if (!(await tableExists(null, table))) return;
@@ -51,6 +56,11 @@ async function ensureDatabaseReady() {
   // Se crea aquí y no durante la primera venta: dentro de la transacción de venta,
   // el CREATE TABLE (en otra conexión) esperaba un bloqueo de la propia venta y se colgaba.
   await ensureAccountingSchema();
+  // Igual con las columnas e índices que la venta verifica en cada cobro: si dos primeras
+  // ventas los creaban a la vez, una abortaba su transacción y respondía 500.
+  await ensureProductTypeColumn(null);
+  await ensureComboItemsTable(null);
+  await ensureLotSaleProductColumn(null);
 }
 
 module.exports = {

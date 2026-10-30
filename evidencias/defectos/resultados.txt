@@ -1,12 +1,12 @@
 ==================================================================
 Defecto: 01-fefo-invertido.patch
 ------------------------------------------------------------------
-  ✖ descuenta primero el lote que vence antes y deja todo consistente (552.3368ms)
-✖ Registro de venta con lotes (FEFO) (1940.2146ms)
+  ✖ descuenta primero el lote que vence antes y deja todo consistente (264.4335ms)
+✖ Registro de venta con lotes (FEFO) (939.5623ms)
 ℹ tests 23
 ℹ pass 22
 ℹ fail 1
-✖ descuenta primero el lote que vence antes y deja todo consistente (552.3368ms)
+✖ descuenta primero el lote que vence antes y deja todo consistente (264.4335ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
     actual: 4,
     expected: 0,
@@ -14,27 +14,27 @@ Defecto: 01-fefo-invertido.patch
 ==================================================================
 Defecto: 02-sin-idempotencia.patch
 ------------------------------------------------------------------
-  ✖ reenviar la misma llave devuelve la venta original y no descuenta stock dos veces (997.6421ms)
-  ✖ cinco envíos simultáneos con la misma llave crean una sola venta (1092.1677ms)
-✖ Reintentos de la misma venta (3448.003ms)
-  ✖ la misma llave con otro contenido se rechaza con 422 (846.2587ms)
-  ✖ el orden de los campos no cambia la identidad de la solicitud (836.5359ms)
-  ✖ rechaza una llave con formato inválido (corta...) con 400 (411.7098ms)
-  ✖ rechaza una llave con formato inválido (tiene espaci...) con 400 (431.2726ms)
-  ✖ rechaza una llave con formato inválido (xxxxxxxxxxxx...) con 400 (445.8108ms)
-  ✖ rechaza una llave con formato inválido (acentuación-...) con 400 (477.5407ms)
-✖ Reglas del contrato (4241.7072ms)
-  ✖ si el proceso cae tras confirmar la venta, el reintento recupera la venta sin duplicarla (871.4425ms)
-  ✖ una reserva abandonada en "processing" se retoma después del tiempo límite (454.9283ms)
-✖ Errores, expiración y recuperación (2827.8292ms)
+  ✖ reenviar la misma llave devuelve la venta original y no descuenta stock dos veces (393.7437ms)
+  ✖ cinco envíos simultáneos con la misma llave crean una sola venta (472.8293ms)
+✖ Reintentos de la misma venta (1482.3793ms)
+  ✖ la misma llave con otro contenido se rechaza con 422 (317.5904ms)
+  ✖ el orden de los campos no cambia la identidad de la solicitud (331.7164ms)
+  ✖ rechaza una llave con formato inválido (corta...) con 400 (192.8776ms)
+  ✖ rechaza una llave con formato inválido (tiene espaci...) con 400 (189.0001ms)
+  ✖ rechaza una llave con formato inválido (xxxxxxxxxxxx...) con 400 (189.5089ms)
+  ✖ rechaza una llave con formato inválido (acentuación-...) con 400 (177.1152ms)
+✖ Reglas del contrato (1714.0786ms)
+  ✖ si el proceso cae tras confirmar la venta, el reintento recupera la venta sin duplicarla (346.5129ms)
+  ✖ una reserva abandonada en "processing" se retoma después del tiempo límite (194.3415ms)
+✖ Errores, expiración y recuperación (1162.9786ms)
 ℹ tests 23
 ℹ pass 13
 ℹ fail 10
-✖ reenviar la misma llave devuelve la venta original y no descuenta stock dos veces (997.6421ms)
+✖ reenviar la misma llave devuelve la venta original y no descuenta stock dos veces (393.7437ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
     actual: undefined,
     expected: 'true',
-✖ cinco envíos simultáneos con la misma llave crean una sola venta (1092.1677ms)
+✖ cinco envíos simultáneos con la misma llave crean una sola venta (472.8293ms)
   AssertionError [ERR_ASSERTION]: exactamente una solicitud debe crear la venta
     actual: 5,
     expected: 1,
@@ -42,12 +42,12 @@ Defecto: 02-sin-idempotencia.patch
 ==================================================================
 Defecto: 03-sin-bloqueo-de-lote.patch
 ------------------------------------------------------------------
-  ✖ dos cajeros venden la última unidad a la vez: solo uno lo logra y el stock nunca queda negativo (518.7206ms)
-✖ Concurrencia (519.5216ms)
+  ✖ dos cajeros venden la última unidad a la vez: solo uno lo logra y el stock nunca queda negativo (239.9984ms)
+✖ Concurrencia (240.4713ms)
 ℹ tests 23
 ℹ pass 22
 ℹ fail 1
-✖ dos cajeros venden la última unidad a la vez: solo uno lo logra y el stock nunca queda negativo (518.7206ms)
+✖ dos cajeros venden la última unidad a la vez: solo uno lo logra y el stock nunca queda negativo (239.9984ms)
   AssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:
     actual: [ 200, 200 ],
     expected: [ 200, 409 ],
