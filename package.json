@@ -3,9 +3,15 @@
     "start": "node server/index.js",
     "start:tailscale": "tailscale serve --bg --yes 3000 && node server/index.js",
     "tailscale:status": "tailscale serve status",
+    "migrate": "node server/utils/migrations.js",
+    "db:test:up": "docker compose up -d --wait db-test",
+    "db:test:down": "docker compose rm -sf db-test",
+    "test": "npm run test:unit && npm run test:integration",
+    "test:unit": "node --test \"tests/unit/**/*.test.js\"",
+    "test:integration": "node --require ./tests/setup-env.js --test --test-concurrency=1 \"tests/integration/**/*.test.js\"",
+    "test:report": "node --require ./tests/setup-env.js --test --test-concurrency=1 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=junit --test-reporter-destination=test-results/junit.xml \"tests/unit/**/*.test.js\" \"tests/integration/**/*.test.js\"",
     "lint": "eslint server/routes/inventory.js server/utils server/middleware tests scripts",
     "format": "prettier --write \"**/*.{js,json,md,html,css}\"",
-    "test": "node --test",
     "backup": "node scripts/backup.js",
     "restore": "node scripts/restore.js",
     "prepare": "husky install"
@@ -44,7 +50,8 @@
     "eslint-config-prettier": "^9.0.0",
     "husky": "^9.0.0",
     "lint-staged": "^16.2.7",
-    "prettier": "^3.4.1"
+    "prettier": "^3.4.1",
+    "supertest": "^7.3.1"
   },
   "overrides": {
     "uuid": "^11.1.1"

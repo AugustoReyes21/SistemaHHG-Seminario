@@ -1,6 +1,7 @@
 const { query, tableExists, columnExists, quoteIdent } = require('../db');
 const { ensureErrorsTable } = require('./errors');
 const { runMigrations } = require('./migrations');
+const { ensureAccountingSchema } = require('../accounting');
 
 async function ensureIndex(table, name, columns) {
   if (!(await tableExists(null, table))) return;
@@ -47,6 +48,9 @@ async function ensureDatabaseReady() {
   await ensureErrorsTable();
   await ensureIndexes();
   await runMigrations();
+  // Se crea aquí y no durante la primera venta: dentro de la transacción de venta,
+  // el CREATE TABLE (en otra conexión) esperaba un bloqueo de la propia venta y se colgaba.
+  await ensureAccountingSchema();
 }
 
 module.exports = {
