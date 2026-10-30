@@ -1,0 +1,614 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Registros</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    :root{
+      --bg:#eef4fb;
+      --panel:#ffffff;
+      --ink:#10233b;
+      --muted:#5a6a7f;
+      --line:#d7e1ee;
+      --accent:#0f5e9c;
+      --accent-2:#18a4a6;
+      --good:#157347;
+      --bad:#b02a37;
+      --shadow:0 20px 50px rgba(16,35,59,.10);
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:'Segoe UI',sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1000px 500px at 8% 10%, rgba(24,164,166,.18), transparent 60%),
+        radial-gradient(900px 540px at 92% 0%, rgba(15,94,156,.16), transparent 58%),
+        linear-gradient(180deg,#f4f9ff 0%, var(--bg) 52%, #e9f1fb 100%);
+      min-height:100vh;
+    }
+    .shell{
+      max-width:1360px;
+      margin:0 auto;
+      padding:24px;
+    }
+    .hero{
+      position:relative;
+      overflow:hidden;
+      border-radius:24px;
+      padding:28px;
+      color:#fff;
+      background:
+        linear-gradient(135deg, rgba(16,35,59,.96), rgba(15,94,156,.92) 55%, rgba(24,164,166,.88));
+      box-shadow:var(--shadow);
+      margin-bottom:18px;
+    }
+    .hero::after{
+      content:'';
+      position:absolute;
+      inset:auto -10% -40% auto;
+      width:340px;
+      height:340px;
+      border-radius:999px;
+      background:radial-gradient(circle, rgba(255,255,255,.24), transparent 68%);
+      pointer-events:none;
+    }
+    .hero-top{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:16px;
+      flex-wrap:wrap;
+    }
+    .eyebrow{
+      margin:0 0 8px;
+      font-size:12px;
+      letter-spacing:.14em;
+      text-transform:uppercase;
+      opacity:.78;
+    }
+    .hero h1{
+      margin:0;
+      font-size:36px;
+      line-height:1.05;
+    }
+    .hero p{
+      margin:10px 0 0;
+      max-width:760px;
+      color:rgba(255,255,255,.86);
+    }
+    .hero-meta{
+      display:flex;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-top:18px;
+    }
+    .hero-pill{
+      padding:10px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.18);
+      background:rgba(255,255,255,.12);
+      font-size:13px;
+      color:#fff;
+      backdrop-filter:blur(6px);
+    }
+    .panel{
+      background:var(--panel);
+      border:1px solid rgba(215,225,238,.95);
+      border-radius:20px;
+      padding:18px;
+      box-shadow:var(--shadow);
+    }
+    .filters{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:12px;
+      align-items:end;
+      margin-bottom:18px;
+    }
+    .field label{
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      color:var(--muted);
+      margin:0 0 6px;
+    }
+    .field input{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:11px 12px;
+      font:inherit;
+      color:var(--ink);
+      background:#f9fbfe;
+    }
+    .actions{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .btn{
+      border:none;
+      border-radius:12px;
+      padding:12px 16px;
+      font:inherit;
+      font-weight:700;
+      cursor:pointer;
+      transition:transform .18s ease, box-shadow .18s ease, opacity .18s ease;
+    }
+    .btn:hover{transform:translateY(-1px)}
+    .btn:disabled{opacity:.6; cursor:wait; transform:none}
+    .btn.primary{
+      color:#fff;
+      background:linear-gradient(135deg, var(--accent), #126db5);
+      box-shadow:0 12px 24px rgba(15,94,156,.24);
+    }
+    .btn.secondary{
+      color:var(--accent);
+      background:#eef6ff;
+      border:1px solid #bfd7ef;
+    }
+    .status{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .cards{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:12px;
+      margin-bottom:18px;
+    }
+    .card{
+      position:relative;
+      overflow:hidden;
+      border-radius:18px;
+      padding:18px;
+      border:1px solid var(--line);
+      background:linear-gradient(180deg, #fff, #f8fbff);
+      min-height:124px;
+    }
+    .card::before{
+      content:'';
+      position:absolute;
+      inset:auto -18px -28px auto;
+      width:108px;
+      height:108px;
+      border-radius:999px;
+      background:radial-gradient(circle, rgba(15,94,156,.10), transparent 70%);
+    }
+    .card .label{
+      color:var(--muted);
+      font-size:13px;
+      font-weight:700;
+      margin:0 0 12px;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+    .card .value{
+      margin:0;
+      font-size:30px;
+      line-height:1.05;
+      font-weight:800;
+      color:var(--ink);
+    }
+    .card .hint{
+      margin:10px 0 0;
+      font-size:13px;
+      color:var(--muted);
+    }
+    .card.good .value{color:var(--good)}
+    .card.bad .value{color:var(--bad)}
+    .dashboard-stack{
+      display:flex;
+      flex-direction:column;
+      gap:18px;
+      margin-bottom:18px;
+    }
+    .metric-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0, 1fr));
+      gap:12px;
+    }
+    .metric-card{
+      border:1px solid var(--line);
+      border-radius:18px;
+      background:linear-gradient(180deg, #fff, #f7fbff);
+      padding:18px;
+      box-shadow:var(--shadow);
+      min-height:220px;
+    }
+    .metric-card h3{
+      margin:0 0 6px;
+      font-size:20px;
+      color:var(--ink);
+    }
+    .metric-card .net{
+      margin:0 0 14px;
+      font-size:28px;
+      font-weight:800;
+      color:var(--accent);
+    }
+    .metric-card .net.bad{color:var(--bad)}
+    .metric-list{
+      display:grid;
+      gap:8px;
+    }
+    .metric-row{
+      display:flex;
+      justify-content:space-between;
+      gap:10px;
+      padding-bottom:8px;
+      border-bottom:1px dashed #dce7f3;
+      font-size:14px;
+    }
+    .metric-row:last-child{
+      padding-bottom:0;
+      border-bottom:none;
+    }
+    .metric-row span:first-child{
+      color:var(--muted);
+      font-weight:600;
+    }
+    .section-head{
+      display:flex;
+      align-items:flex-end;
+      justify-content:space-between;
+      gap:12px;
+      flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .section-head h2{
+      margin:0;
+      font-size:22px;
+    }
+    .section-head p{
+      margin:0;
+      color:var(--muted);
+      font-size:14px;
+    }
+    .table-wrap{
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:#fff;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      min-width:980px;
+    }
+    th, td{
+      padding:12px 14px;
+      border-bottom:1px solid #e8eef6;
+      text-align:left;
+      font-size:14px;
+      white-space:nowrap;
+    }
+    th{
+      position:sticky;
+      top:0;
+      z-index:1;
+      background:#f4f8fd;
+      color:#39506a;
+      font-size:12px;
+      letter-spacing:.05em;
+      text-transform:uppercase;
+    }
+    td.num{text-align:right; font-variant-numeric:tabular-nums}
+    tbody tr:hover{background:#f9fbff}
+    .empty{
+      padding:28px 14px;
+      text-align:center;
+      color:var(--muted);
+    }
+    @media (max-width: 1100px){
+      .filters, .cards, .metric-grid{grid-template-columns:repeat(2, minmax(0, 1fr))}
+    }
+    @media (max-width: 720px){
+      body{background:#eef4fb}
+      .shell{padding:16px}
+      .hero{padding:22px}
+      .hero h1{font-size:28px}
+      .filters, .cards, .metric-grid{grid-template-columns:1fr}
+      .actions{justify-content:stretch}
+      .actions .btn{flex:1}
+    }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <p class="eyebrow">Panel Administrativo</p>
+          <h1>Registros</h1>
+          <p>Dashboard financiero con desglose por área y por rubro: consultas, emergencia, hospitalización, laboratorio, rayos X / USG, preops, medicina, ajustes manuales y merma por vencimiento.</p>
+        </div>
+      </div>
+      <div class="hero-meta">
+      </div>
+    </section>
+
+    <section class="panel" style="margin-bottom:18px;">
+      <div class="filters">
+        <div class="field">
+          <label for="fromDate">Desde</label>
+          <input id="fromDate" type="date">
+        </div>
+        <div class="field">
+          <label for="toDate">Hasta</label>
+          <input id="toDate" type="date">
+        </div>
+        <div>
+          <p class="status" id="rangeStatus">Cargando registros...</p>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="btnExport" type="button">Exportar XLSX</button>
+          <button class="btn primary" id="btnLoad" type="button">Actualizar</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="cards" id="cards"></section>
+
+    <section class="dashboard-stack">
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Dashboard Por Área</h2>
+            <p>Consulta externa, emergencia, hospitalización, preops y ajustes manuales.</p>
+          </div>
+        </div>
+        <div class="metric-grid" id="areaBoard">
+          <div class="empty">Cargando desglose por área...</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="section-head">
+          <div>
+            <h2>Dashboard Por Rubro</h2>
+            <p>Consultas, laboratorio, rayos X / USG, medicina, preops y otros.</p>
+          </div>
+        </div>
+        <div class="metric-grid" id="serviceBoard">
+          <div class="empty">Cargando desglose por rubro...</div>
+        </div>
+      </section>
+    </section>
+
+    <section class="panel">
+      <div class="section-head">
+        <div>
+          <h2>Detalle Diario</h2>
+          <p>Las devoluciones manuales se integran dentro del total de devoluciones.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Tickets</th>
+              <th>Ventas Brutas</th>
+              <th>Devoluciones</th>
+              <th>Manual</th>
+              <th>Ventas Netas</th>
+              <th>Compras Confirmadas</th>
+              <th>Costo</th>
+              <th>Merma Vencimiento</th>
+              <th>Ganancia</th>
+              <th>Pérdida</th>
+            </tr>
+          </thead>
+          <tbody id="dailyBody">
+            <tr><td class="empty" colspan="11">Cargando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const moneyFmt = new Intl.NumberFormat('es-GT', {
+      style: 'currency',
+      currency: 'GTQ',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
+
+    let LAST_SUMMARY = null;
+
+    function fmtMoney(value){
+      return moneyFmt.format(Number(value || 0));
+    }
+
+    function fmtDate(value){
+      if(!value) return '--';
+      const d = new Date(`${String(value).slice(0,10)}T00:00:00`);
+      if(Number.isNaN(d.getTime())) return String(value).slice(0,10);
+      return d.toLocaleDateString('es-GT', { year:'numeric', month:'2-digit', day:'2-digit' });
+    }
+
+    function setDefaultRange(){
+      const now = new Date();
+      const end = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const start = new Date(end);
+      start.setDate(start.getDate() - 29);
+      document.getElementById('fromDate').value = start.toISOString().slice(0,10);
+      document.getElementById('toDate').value = end.toISOString().slice(0,10);
+    }
+
+    async function ensureAuth(){
+      const res = await fetch('api/auth_check', { credentials:'include' });
+      const data = await res.json().catch(() => ({}));
+      const role = String(data?.user?.rol || data?.user?.role || '').toLowerCase();
+      if(!data.ok){
+        location.href = 'login.html';
+        return false;
+      }
+      if(role !== 'admin' && role !== 'administrador' && role !== 'contabilidad' && role !== 'superadmin'){
+        alert('Acceso restringido');
+        location.href = 'inventario.html';
+        return false;
+      }
+      return true;
+    }
+
+    function buildParams(withFormat){
+      const params = new URLSearchParams();
+      const from = document.getElementById('fromDate').value;
+      const to = document.getElementById('toDate').value;
+      if(from) params.set('from', from);
+      if(to) params.set('to', to);
+      if(withFormat) params.set('format', withFormat);
+      return params.toString();
+    }
+
+    function setBusy(isBusy){
+      document.getElementById('btnLoad').disabled = isBusy;
+      document.getElementById('btnExport').disabled = isBusy;
+    }
+
+    function renderCards(summary){
+      const totals = summary?.totals || {};
+      const cards = [
+        { label:'Ventas brutas', value:fmtMoney(totals.ventas_brutas), hint:`${totals.tickets || 0} ticket(s)` },
+        { label:'Devoluciones', value:fmtMoney(totals.devoluciones), hint:`Manual: ${fmtMoney(totals.devoluciones_manuales)}`, tone:'bad' },
+        { label:'Ventas netas', value:fmtMoney(totals.ventas_netas), hint:`Promedio: ${fmtMoney(totals.ticket_promedio)}` },
+        { label:'Compras confirmadas', value:fmtMoney(totals.compras_confirmadas), hint:'Compras aplicadas al periodo' },
+        { label:'Costo de ventas', value:fmtMoney(totals.costo_ventas), hint:'Calculado con lotes y costo actual de respaldo' },
+        { label:'Merma vencimiento', value:fmtMoney(totals.mermas_vencimiento), hint:'Castigos por lotes vencidos registrados' , tone:'bad' },
+        { label:'Ganancia', value:fmtMoney(totals.ganancia), hint:'Utilidad positiva del periodo', tone:'good' },
+        { label:'Pérdida', value:fmtMoney(totals.perdida), hint:'Resultado negativo luego de costo y merma', tone:'bad' },
+        { label:'Tickets', value:String(totals.tickets || 0), hint:'Ventas registradas en el rango' }
+      ];
+      document.getElementById('cards').innerHTML = cards.map((card) => `
+        <article class="card ${card.tone || ''}">
+          <p class="label">${card.label}</p>
+          <p class="value">${card.value}</p>
+          <p class="hint">${card.hint}</p>
+        </article>
+      `).join('');
+    }
+
+    function renderBreakdownBoard(targetId, rows){
+      const box = document.getElementById(targetId);
+      if(!Array.isArray(rows) || !rows.length){
+        box.innerHTML = '<div class="empty">Sin datos para este rango.</div>';
+        return;
+      }
+      box.innerHTML = rows.map((row) => {
+        const net = Number(row.ventas_netas || 0);
+        return `
+          <article class="metric-card">
+            <h3>${row.label || row.id || 'Categoría'}</h3>
+            <p class="net ${net < 0 ? 'bad' : ''}">${fmtMoney(net)}</p>
+            <div class="metric-list">
+              <div class="metric-row"><span>Ventas brutas</span><strong>${fmtMoney(row.ventas_brutas)}</strong></div>
+              <div class="metric-row"><span>Devoluciones</span><strong>${fmtMoney(row.devoluciones)}</strong></div>
+              <div class="metric-row"><span>Costo</span><strong>${fmtMoney(row.costo_ventas)}</strong></div>
+              <div class="metric-row"><span>Merma vencimiento</span><strong>${fmtMoney(row.mermas_vencimiento)}</strong></div>
+              <div class="metric-row"><span>Ganancia</span><strong>${fmtMoney(row.ganancia)}</strong></div>
+              <div class="metric-row"><span>Pérdida</span><strong>${fmtMoney(row.perdida)}</strong></div>
+            </div>
+          </article>
+        `;
+      }).join('');
+    }
+
+    function renderDaily(rows){
+      const body = document.getElementById('dailyBody');
+      if(!Array.isArray(rows) || !rows.length){
+        body.innerHTML = '<tr><td class="empty" colspan="11">No hay registros para ese rango.</td></tr>';
+        return;
+      }
+      const sorted = [...rows].sort((a,b) => String(b.fecha || '').localeCompare(String(a.fecha || '')));
+      body.innerHTML = sorted.map((row) => `
+        <tr>
+          <td>${fmtDate(row.fecha)}</td>
+          <td class="num">${Number(row.tickets || 0)}</td>
+          <td class="num">${fmtMoney(row.ventas_brutas)}</td>
+          <td class="num">${fmtMoney(row.devoluciones)}</td>
+          <td class="num">${fmtMoney(row.devoluciones_manuales)}</td>
+          <td class="num">${fmtMoney(row.ventas_netas)}</td>
+          <td class="num">${fmtMoney(row.compras_confirmadas)}</td>
+          <td class="num">${fmtMoney(row.costo_ventas)}</td>
+          <td class="num">${fmtMoney(row.mermas_vencimiento)}</td>
+          <td class="num">${fmtMoney(row.ganancia)}</td>
+          <td class="num">${fmtMoney(row.perdida)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function updateStatus(summary){
+      const range = summary?.from && summary?.to
+        ? `Rango: ${fmtDate(summary.from)} al ${fmtDate(summary.to)}`
+        : summary?.from
+        ? `Rango: desde ${fmtDate(summary.from)}`
+        : summary?.to
+        ? `Rango: hasta ${fmtDate(summary.to)}`
+        : 'Sin rango definido';
+      const days = Array.isArray(summary?.daily) ? summary.daily.length : 0;
+      document.getElementById('rangeStatus').textContent = `${range}. ${days} día(s) con movimiento.`;
+    }
+
+    async function loadSummary(){
+      setBusy(true);
+      document.getElementById('rangeStatus').textContent = 'Consultando registros...';
+      try{
+        const res = await fetch(`api/records_summary?${buildParams('')}`, { credentials:'include' });
+        const data = await res.json().catch(() => null);
+        if(!res.ok || !data || !data.ok){
+          throw new Error((data && data.error) ? data.error : 'No se pudo cargar el resumen');
+        }
+        LAST_SUMMARY = data;
+        renderCards(data);
+        renderBreakdownBoard('areaBoard', data?.breakdown?.by_area || []);
+        renderBreakdownBoard('serviceBoard', data?.breakdown?.by_service || []);
+        renderDaily(data.daily);
+        updateStatus(data);
+      }catch(err){
+        document.getElementById('cards').innerHTML = `
+          <article class="card bad">
+            <p class="label">Error</p>
+            <p class="value" style="font-size:22px;">Sin datos</p>
+            <p class="hint">${err.message || 'No se pudo cargar el panel.'}</p>
+          </article>
+        `;
+        document.getElementById('areaBoard').innerHTML = '<div class="empty">No se pudo cargar el desglose por área.</div>';
+        document.getElementById('serviceBoard').innerHTML = '<div class="empty">No se pudo cargar el desglose por rubro.</div>';
+        document.getElementById('dailyBody').innerHTML = `<tr><td class="empty" colspan="11">${(err && err.message) ? err.message : 'Error cargando registros.'}</td></tr>`;
+        document.getElementById('rangeStatus').textContent = 'No se pudo cargar el resumen.';
+      }finally{
+        setBusy(false);
+      }
+    }
+
+    function exportSummary(){
+      const query = buildParams('xlsx');
+      window.open(`api/records_summary?${query}`, '_blank');
+    }
+
+    function bind(){
+      document.getElementById('btnLoad').addEventListener('click', loadSummary);
+      document.getElementById('btnExport').addEventListener('click', exportSummary);
+      document.getElementById('fromDate').addEventListener('change', loadSummary);
+      document.getElementById('toDate').addEventListener('change', loadSummary);
+    }
+
+    (async function init(){
+      const ok = await ensureAuth();
+      if(!ok) return;
+      setDefaultRange();
+      bind();
+      await loadSummary();
+    })();
+  </script>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

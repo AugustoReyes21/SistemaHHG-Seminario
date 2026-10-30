@@ -1,0 +1,488 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Productos por vencer</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#223;}
+    .page{max-width:1200px;margin:20px auto;padding:0 16px;}
+    .card{background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.08);padding:18px;margin-bottom:16px;}
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;}
+    .filters label{display:block;font-size:12px;color:#667085;margin-bottom:6px;font-weight:600;}
+    .filters input,.filters select{width:100%;padding:10px 12px;border:1px solid #d0d7e2;border-radius:10px;font-size:14px;background:#fff;}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .btn{padding:10px 14px;border:none;border-radius:10px;background:#1f5f8b;color:#fff;cursor:pointer;font-weight:600;}
+    .btn.secondary{background:#e8eef5;color:#1f3c56;}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+    .summary .tile{border-radius:14px;padding:14px 16px;color:#10243a;}
+    .summary .tile strong{display:block;font-size:26px;margin-top:6px;}
+    .summary .tile small{display:block;margin-top:6px;color:#55667d;font-size:12px;}
+    .tile.all{background:linear-gradient(135deg,#dbeafe,#eff6ff);}
+    .tile.l60{background:linear-gradient(135deg,#fef3c7,#fffbeb);}
+    .tile.l30{background:linear-gradient(135deg,#fed7aa,#fff7ed);}
+    .tile.l15{background:linear-gradient(135deg,#fecaca,#fff1f2);}
+    .tile.expired{background:linear-gradient(135deg,#ffd3d8,#fff1f3);}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:12px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top;}
+    th{font-size:12px;color:#667085;text-transform:uppercase;letter-spacing:.04em;}
+    td small{display:block;color:#667085;}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+    .badge.l60{background:#fff4cc;color:#8a5a00;}
+    .badge.l30{background:#ffe0c2;color:#a54900;}
+    .badge.l15{background:#ffd6d6;color:#b42318;}
+    .days{font-weight:700;}
+    .muted{color:#667085;font-size:13px;}
+    .empty{padding:24px 12px;text-align:center;color:#667085;}
+    .inline-actions{display:flex;gap:8px;justify-content:flex-end;}
+    .btn.mini{padding:8px 10px;font-size:12px;border-radius:9px;}
+    @media (max-width: 720px){
+      .page{padding:0 10px;}
+      th,td{padding:10px 8px;font-size:13px;}
+    }
+  </style>
+  <base href="/Pos/merged/">
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1 data-i18n="Productos por vencer">Productos por vencer</h1>
+    <div class="app-actions">
+      <button id="historyBtn" class="back-btn" type="button" onclick="location.href='mermas_vencimiento.html'">Historial de mermas</button>
+      <button class="back-btn" type="button" onclick="location.href='inventario.html'" data-i18n="Volver">Volver</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <div class="filters">
+        <div>
+          <label for="branchFilter" data-i18n="Sucursal">Sucursal</label>
+          <select id="branchFilter">
+            <option value="" data-i18n="Todas las sucursales">Todas las sucursales</option>
+          </select>
+        </div>
+        <div>
+          <label for="searchFilter" data-i18n="Buscar producto o lote">Buscar producto o lote</label>
+          <input id="searchFilter" type="text" data-i18n-placeholder="Nombre, lote, presentación..." placeholder="Nombre, lote, presentación...">
+        </div>
+        <div>
+          <label for="alertFilter" data-i18n="Nivel de alerta">Nivel de alerta</label>
+          <select id="alertFilter">
+            <option value="" data-i18n="Todas las alertas">Todas las alertas</option>
+            <option value="60" data-i18n="Alerta 60 días">Alerta 60 días</option>
+            <option value="30" data-i18n="Alerta 30 días">Alerta 30 días</option>
+            <option value="15" data-i18n="Alerta 15 días">Alerta 15 días</option>
+          </select>
+        </div>
+        <div>
+          <label for="scopeFilter" data-i18n="Estado">Estado</label>
+          <select id="scopeFilter">
+            <option value="upcoming" data-i18n="Por vencer">Por vencer</option>
+            <option value="expired" data-i18n="Vencidos">Vencidos</option>
+            <option value="all" data-i18n="Todos">Todos</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button id="searchBtn" class="btn" type="button" data-i18n="Buscar">Buscar</button>
+          <button id="clearBtn" class="btn secondary" type="button" data-i18n="Limpiar">Limpiar</button>
+        </div>
+      </div>
+      <div id="hint" class="muted" style="margin-top:10px;" data-i18n="Se muestran lotes con vencimiento dentro de los próximos 60 días.">Se muestran lotes con vencimiento dentro de los próximos 60 días.</div>
+    </section>
+
+    <section class="summary" id="summary">
+      <div class="tile all">
+        <span data-i18n="Total próximos a vencer">Total próximos a vencer</span>
+        <strong id="sumAll">0</strong>
+      </div>
+      <div class="tile l60">
+        <span data-i18n="Alerta 60 días">Alerta 60 días</span>
+        <strong id="sum60">0</strong>
+      </div>
+      <div class="tile l30">
+        <span data-i18n="Alerta 30 días">Alerta 30 días</span>
+        <strong id="sum30">0</strong>
+      </div>
+      <div class="tile l15">
+        <span data-i18n="Alerta 15 días">Alerta 15 días</span>
+        <strong id="sum15">0</strong>
+      </div>
+      <div class="tile expired">
+        <span data-i18n="Vencidos">Vencidos</span>
+        <strong id="sumExpired">0</strong>
+        <small id="sumExpiredCost">Costo estimado: Q0.00</small>
+      </div>
+    </section>
+
+    <section class="card">
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th data-i18n="Alerta">Alerta</th>
+              <th data-i18n="Producto">Producto</th>
+              <th data-i18n="Sucursal">Sucursal</th>
+              <th data-i18n="Lote">Lote</th>
+              <th data-i18n="Cantidad">Cantidad</th>
+              <th data-i18n="Vence">Vence</th>
+              <th data-i18n="Días restantes">Días restantes</th>
+              <th data-i18n="Costo estimado">Costo estimado</th>
+              <th data-i18n="Acciones">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="9" class="empty" data-i18n="Cargando productos próximos a vencer...">Cargando productos próximos a vencer...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function(){
+    const dict = {
+      'Productos por vencer': { en: 'Products nearing expiration' },
+      'Todas las sucursales': { en: 'All branches' },
+      'Buscar producto o lote': { en: 'Search product or lot' },
+      'Nombre, lote, presentación...': { en: 'Name, lot, presentation...' },
+      'Nivel de alerta': { en: 'Alert level' },
+      'Todas las alertas': { en: 'All alerts' },
+      'Estado': { en: 'Status' },
+      'Por vencer': { en: 'Upcoming' },
+      'Vencidos': { en: 'Expired' },
+      'Todos': { en: 'All' },
+      'Alerta': { en: 'Alert' },
+      'Alerta 60 días': { en: '60-day alert' },
+      'Alerta 30 días': { en: '30-day alert' },
+      'Alerta 15 días': { en: '15-day alert' },
+      'Se muestran lotes con vencimiento dentro de los próximos 60 días.': { en: 'Lots expiring within the next 60 days are shown.' },
+      'Se muestran lotes ya vencidos. Desde esta vista se puede registrar la merma.': { en: 'Expired lots are shown. Their write-off can be registered from this view.' },
+      'Se muestran lotes por vencer y ya vencidos.': { en: 'Upcoming and expired lots are shown.' },
+      'Total próximos a vencer': { en: 'Total nearing expiration' },
+      'Producto': { en: 'Product' },
+      'Lote': { en: 'Lot' },
+      'Vence': { en: 'Expires' },
+      'Días restantes': { en: 'Days left' },
+      'Costo estimado': { en: 'Estimated cost' },
+      'Costo unitario': { en: 'Unit cost' },
+      'Acciones': { en: 'Actions' },
+      'Registrar merma': { en: 'Register write-off' },
+      'Cantidad a castigar': { en: 'Quantity to write off' },
+      'Observaciones de merma (opcional)': { en: 'Write-off notes (optional)' },
+      'La cantidad debe ser mayor a cero.': { en: 'Quantity must be greater than zero.' },
+      'La cantidad no puede exceder la existencia del lote.': { en: 'Quantity cannot exceed lot stock.' },
+      'Costo estimado:': { en: 'Estimated cost:' },
+      'Merma registrada correctamente.': { en: 'Write-off registered successfully.' },
+      'Cargando productos próximos a vencer...': { en: 'Loading products nearing expiration...' },
+      'Sin productos próximos a vencer con ese filtro.': { en: 'No products nearing expiration for this filter.' },
+      'Error cargando productos próximos a vencer.': { en: 'Error loading products nearing expiration.' },
+      'Presentación': { en: 'Presentation' },
+      'Principio activo': { en: 'Active ingredient' },
+      'Cantidad': { en: 'Quantity' }
+    };
+
+    let USER_ROLE = '';
+    let CAN_WRITEOFF = false;
+    const moneyFmt = new Intl.NumberFormat('es-GT', {
+      style:'currency',
+      currency:'GTQ',
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+
+    function t(key){
+      if (window.I18N && typeof window.I18N.t === 'function') return window.I18N.t(key);
+      return key;
+    }
+
+    function normalizeRole(value){
+      const raw = String(value || '').trim().toLowerCase();
+      const map = {
+        user: 'user',
+        usuario: 'user',
+        admin: 'admin',
+        administrador: 'admin',
+        superadmin: 'superadmin',
+        contabilidad: 'contabilidad',
+        farmacia: 'farmacia',
+        enfermeria: 'enfermeria',
+        cajero: 'cashier',
+        caja: 'cashier',
+        cashiee: 'cashier',
+        cashierh: 'cashierh'
+      };
+      return map[raw] || raw;
+    }
+
+    function badgeClass(level, expired){
+      if (expired) return 'l15';
+      if (level === 15) return 'l15';
+      if (level === 30) return 'l30';
+      return 'l60';
+    }
+
+    function fmtMoney(value){
+      return moneyFmt.format(Number(value || 0));
+    }
+
+    function escapeHtml(value){
+      return String(value || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function fetchJSON(url, opts={}){
+      const resp = await fetch(url, { credentials:'include', cache:'no-store', ...opts });
+      const text = await resp.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch(_) {}
+      return { ok: resp.ok, data, text, status: resp.status };
+    }
+
+    function fmtDate(value){
+      if(!value) return '';
+      const d = new Date(value + 'T00:00:00');
+      if (Number.isNaN(d.getTime())) return value;
+      const lang = (window.I18N && window.I18N.getLang) ? window.I18N.getLang() : 'es';
+      return new Intl.DateTimeFormat(lang === 'en' ? 'en-US' : 'es-GT', {
+        year:'numeric', month:'2-digit', day:'2-digit'
+      }).format(d);
+    }
+
+    async function loadBranches(){
+      const sel = document.getElementById('branchFilter');
+      const res = await fetchJSON('api/branches');
+      if (!res.ok || !Array.isArray(res.data)) return;
+      res.data.forEach((branch) => {
+        const opt = document.createElement('option');
+        opt.value = branch.id;
+        opt.textContent = branch.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    function updateHint(){
+      const scope = document.getElementById('scopeFilter').value;
+      const alertFilter = document.getElementById('alertFilter');
+      if (scope === 'expired') {
+        document.getElementById('hint').textContent = t('Se muestran lotes ya vencidos. Desde esta vista se puede registrar la merma.');
+        alertFilter.disabled = true;
+        alertFilter.value = '';
+        return;
+      }
+      alertFilter.disabled = false;
+      if (scope === 'all') {
+        document.getElementById('hint').textContent = t('Se muestran lotes por vencer y ya vencidos.');
+        return;
+      }
+      document.getElementById('hint').textContent = t('Se muestran lotes con vencimiento dentro de los próximos 60 días.');
+    }
+
+    function renderSummary(summary){
+      document.getElementById('sumAll').textContent = Number(summary.total || 0);
+      document.getElementById('sum60').textContent = Number(summary.alert60 || 0);
+      document.getElementById('sum30').textContent = Number(summary.alert30 || 0);
+      document.getElementById('sum15').textContent = Number(summary.alert15 || 0);
+      document.getElementById('sumExpired').textContent = Number(summary.expired || 0);
+      document.getElementById('sumExpiredCost').textContent = `${t('Costo estimado:')} ${fmtMoney(summary.expired_cost || 0)}`;
+    }
+
+    function renderRows(items){
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '';
+      if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty">${t('Sin productos próximos a vencer con ese filtro.')}</td></tr>`;
+        return;
+      }
+      items.forEach((item) => {
+        const canAct = !!item.expired && CAN_WRITEOFF && (!!item.lot_id || !!item.product_id);
+        const daysText =
+          item.expired
+            ? `-${Math.abs(Number(item.days_to_expire || 0))}`
+            : `${Number(item.days_to_expire || 0)}`;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="badge ${badgeClass(item.alert_level, item.expired)}">${item.alert_label || ''}</span></td>
+          <td>
+            <strong>${item.nombre_comercial || ''}</strong>
+            ${item.presentacion ? `<small>${t('Presentación')}: ${item.presentacion}</small>` : ''}
+            ${item.principio_activo ? `<small>${t('Principio activo')}: ${item.principio_activo}</small>` : ''}
+            <small>${t('Costo unitario')}: ${fmtMoney(item.unit_cost || 0)}</small>
+            <small>${t('Costo estimado')}: ${fmtMoney(item.total_cost || 0)}</small>
+          </td>
+          <td>${item.branch_name || ''}</td>
+          <td>${item.lot_number || '-'}</td>
+          <td>${Number(item.quantity || 0)}</td>
+          <td>${fmtDate(item.expiry_date)}</td>
+          <td class="days">${daysText}</td>
+          <td>${fmtMoney(item.total_cost || 0)}</td>
+          <td>
+            ${canAct ? `
+              <div class="inline-actions">
+                <button
+                  type="button"
+                  class="btn mini"
+                  data-writeoff="1"
+                  data-lot-id="${Number(item.lot_id || 0)}"
+                  data-product-id="${Number(item.product_id || 0)}"
+                  data-branch-id="${Number(item.branch_id || 0)}"
+                  data-expiry-date="${escapeHtml(item.expiry_date || '')}"
+                  data-qty="${Number(item.quantity || 0)}"
+                  data-unit-cost="${Number(item.unit_cost || 0)}"
+                  data-name="${escapeHtml(item.nombre_comercial || '')}"
+                >${t('Registrar merma')}</button>
+              </div>` : '<span class="muted">--</span>'}
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function registerWriteoff(button){
+      const lotId = Number(button.dataset.lotId || 0);
+      const productId = Number(button.dataset.productId || 0);
+      const branchId = Number(button.dataset.branchId || 0);
+      const expiryDate = button.dataset.expiryDate || '';
+      const maxQty = Number(button.dataset.qty || 0);
+      const unitCost = Number(button.dataset.unitCost || 0);
+      const productName = button.dataset.name || '';
+      if ((!lotId && !productId) || maxQty <= 0) return;
+
+      const qtyRaw = window.prompt(t('Cantidad a castigar'), String(maxQty));
+      if (qtyRaw == null) return;
+      const quantity = Number(String(qtyRaw).replace(',', '.'));
+      if (!Number.isFinite(quantity) || quantity <= 0) {
+        alert(t('La cantidad debe ser mayor a cero.'));
+        return;
+      }
+      if (quantity > maxQty) {
+        alert(t('La cantidad no puede exceder la existencia del lote.'));
+        return;
+      }
+      const note = window.prompt(t('Observaciones de merma (opcional)'), '') || '';
+      const estimated = fmtMoney(quantity * unitCost);
+      if (!window.confirm(`${t('Registrar merma')}: ${productName}\n${t('Cantidad')}: ${quantity}\n${t('Costo estimado')}: ${estimated}`)) {
+        return;
+      }
+
+      const res = await fetchJSON('api/expired_writeoff', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json' },
+        body: JSON.stringify({
+          lot_id: lotId || null,
+          product_id: productId || null,
+          branch_id: branchId || null,
+          expiry_date: expiryDate || null,
+          quantity,
+          notes: note
+        })
+      });
+      if (!res.ok || !res.data?.ok) {
+        alert(res.data?.error || t('Error cargando productos próximos a vencer.'));
+        return;
+      }
+      alert(t('Merma registrada correctamente.'));
+      await loadData();
+    }
+
+    async function loadData(){
+      const params = new URLSearchParams();
+      const branchId = document.getElementById('branchFilter').value;
+      const q = document.getElementById('searchFilter').value.trim();
+      const scope = document.getElementById('scopeFilter').value;
+      updateHint();
+      const alert = document.getElementById('alertFilter').value;
+      if (branchId) params.set('branch_id', branchId);
+      if (q) params.set('q', q);
+      if (alert) params.set('alert', alert);
+      if (scope) params.set('scope', scope);
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = `<tr><td colspan="9" class="empty">${t('Cargando productos próximos a vencer...')}</td></tr>`;
+      const res = await fetchJSON(`api/expiring_products?${params.toString()}`);
+      if (!res.ok || !res.data?.ok) {
+        tbody.innerHTML = `<tr><td colspan="9" class="empty">${res.data?.error || t('Error cargando productos próximos a vencer.')}</td></tr>`;
+        renderSummary({ total:0, expired:0, expired_cost:0, alert60:0, alert30:0, alert15:0 });
+        return;
+      }
+      renderSummary(res.data.summary || {});
+      renderRows(Array.isArray(res.data.items) ? res.data.items : []);
+    }
+
+    async function authCheck(){
+      const res = await fetchJSON('api/auth_check');
+      if (!res.ok || !res.data?.ok) {
+        location.href = 'login.html';
+        return false;
+      }
+      USER_ROLE = normalizeRole(res.data.user?.rol || res.data.user?.role || '');
+      CAN_WRITEOFF = ['admin', 'superadmin'].includes(USER_ROLE);
+      const canSeeHistory = ['admin', 'contabilidad', 'farmacia', 'superadmin'].includes(USER_ROLE);
+      document.getElementById('historyBtn').style.display = canSeeHistory ? '' : 'none';
+      const allowedRoles = ['admin', 'contabilidad', 'farmacia', 'cashier', 'cashierh', 'superadmin', 'enfermeria', 'user'];
+      if (!allowedRoles.includes(USER_ROLE)) {
+        alert(t('Acceso restringido'));
+        location.href = 'login.html';
+        return false;
+      }
+      return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (window.I18N && typeof window.I18N.extend === 'function') {
+        window.I18N.extend(dict);
+      }
+      if (!(await authCheck())) return;
+      await loadBranches();
+      await loadData();
+      document.getElementById('searchBtn').addEventListener('click', loadData);
+      document.getElementById('clearBtn').addEventListener('click', async () => {
+        document.getElementById('branchFilter').value = '';
+        document.getElementById('searchFilter').value = '';
+        document.getElementById('alertFilter').value = '';
+        document.getElementById('scopeFilter').value = 'upcoming';
+        await loadData();
+      });
+      document.getElementById('searchFilter').addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          await loadData();
+        }
+      });
+      document.getElementById('branchFilter').addEventListener('change', loadData);
+      document.getElementById('alertFilter').addEventListener('change', loadData);
+      document.getElementById('scopeFilter').addEventListener('change', loadData);
+      document.getElementById('rows').addEventListener('click', async (e) => {
+        const button = e.target.closest('[data-writeoff="1"]');
+        if (!button) return;
+        await registerWriteoff(button);
+      });
+      if (window.I18N && typeof window.I18N.applyTranslations === 'function') {
+        window.I18N.applyTranslations();
+      }
+    });
+  })();
+  </script>
+  <script src="js/profile.js"></script>
+  <div id="profileModal" class="modal" style="display:none;">
+    <div class="box" style="max-width:420px;">
+      <h3 style="margin-top:0;" data-i18n="Perfil">Perfil</h3>
+      <div style="display:flex;gap:14px;align-items:center;">
+        <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+        <div>
+          <div style="font-weight:700;" data-profile-name></div>
+          <div class="muted" data-profile-username></div>
+          <div class="muted">Rol: <span data-profile-role></span></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'" data-i18n="Cerrar">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

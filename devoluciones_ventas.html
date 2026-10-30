@@ -1,0 +1,548 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Anulación de ventas</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background .3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:1000px;margin:20px auto;padding:0 20px;}
+    .card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    .form-group{display:flex;gap:12px;margin-bottom:12px;align-items:center;}
+    .form-group input,.form-group select,.form-group textarea{flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:15px;}
+    .btn{padding:8px 12px;border:none;border-radius:6px;background:#2b5876;color:#fff;cursor:pointer;transition:background .3s;}
+    .btn:hover{background:#4e4376;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;color:#333;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .remove{background:#e74c3c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+    .hint{font-size:12px;color:#666;margin-top:-6px;margin-bottom:8px}
+    .muted{color:#777;font-size:13px}
+    .disabled{opacity:.6;pointer-events:none}
+    .status-note{margin-top:6px;margin-bottom:12px;color:#2b5876;font-size:13px}
+  </style>
+  
+  <base href="/Pos/merged/">
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Anulación de ventas</h1>
+    <button onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+  </header>
+  <div class="container">
+    <div class="card">
+      <div class="form-group">
+        <label style="min-width:140px;">Devolución sin ID</label>
+        <select id="manualReturn">
+          <option value="0">No</option>
+          <option value="1">Sí</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="min-width:140px;">Caja</label>
+        <select id="cajaSelect">
+          <option value="">Cargando cajas abiertas...</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label style="min-width:140px;">ID de venta</label>
+        <input id="saleId" type="number" min="1" placeholder="Ej: 1203">
+        <button class="btn" id="loadSale">Cargar venta</button>
+      </div>
+      <div class="form-group">
+        <label style="min-width:140px;">Cliente</label>
+        <input id="customerDisplay" type="text" readonly placeholder="Cliente de la venta" />
+      </div>
+      <div class="form-group">
+        <label style="min-width:140px;">Total de la venta</label>
+        <input id="saleTotalDisplay" type="text" readonly class="muted" placeholder="—" />
+      </div>
+      <div class="status-note" id="fullReturnNote" style="display:none;">Al registrar la devolución se anulará el comprobante completo.</div>
+      
+      <div id="sinProductoRow" class="form-group" style="display:none;">
+        <label style="min-width:140px;">Venta sin producto</label>
+        <select id="sinProducto">
+          <option value="0">No</option>
+          <option value="1">Sí</option>
+        </select>
+      </div>
+      <div id="montoRow" class="form-group" style="display:none;">
+        <label style="min-width:140px;">Monto a devolver (Q)</label>
+        <input id="montoDevolver" type="number" step="0.01" min="0" placeholder="Ej: 80.00">
+      </div>
+      <div class="hint" id="montoHint" style="display:none;">Para ventas sin producto, indique el monto a devolver.</div>
+
+      <div id="itemsBlock" style="display:none;">
+        <table id="itemsTable" style="display:none;">
+          <thead><tr><th>Producto</th><th>Cantidad</th><th>Subtotal</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div id="servicesContainer" class="form-group" style="display:none;">
+        <label style="min-width:140px;">Servicios</label>
+        <span class="muted">Todos los servicios del comprobante se anularán automáticamente. Total: <strong id="serviceRefundTotal">—</strong></span>
+      </div>
+      <table id="servicesTable" style="display:none;">
+        <thead><tr><th>Servicio</th><th>Monto</th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="form-group">
+        <label style="min-width:140px;">Motivo</label>
+        <textarea id="motive" rows="2" placeholder="Motivo de la devolución (obligatorio)"></textarea>
+      </div>
+      <div class="status-note" id="policyHint" style="display:none;"></div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <button class="btn" id="submitReturn">Registrar devolución</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let PRODUCTS = [];
+let SALE_ITEMS = [];
+let items = [];
+let lastLoadedSale = null;
+let SALE_SERVICES = [];
+let OPEN_CAJAS = [];
+async function fetchJSON(url, opts = {}) {
+  const resp = await fetch(url, opts);
+  const text = await resp.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch { /* no JSON */ }
+  return { ok: resp.ok, data, raw: text, status: resp.status };
+}
+
+function setPolicyHint(message) {
+  const el = document.getElementById('policyHint');
+  if (!el) return;
+  if (!message) {
+    el.textContent = '';
+    el.style.display = 'none';
+    return;
+  }
+  el.textContent = message;
+  el.style.display = '';
+}
+
+function renderReturnPolicyHint() {
+  const manual = document.getElementById('manualReturn').value === '1';
+  if (manual) {
+    setPolicyHint('Devolución sin ID: requiere aprobación de admin o superadmin antes de aplicarse.');
+    syncSubmitAvailability();
+    return;
+  }
+  const policy = lastLoadedSale?.return_policy || null;
+  if (!policy) {
+    setPolicyHint('');
+    syncSubmitAvailability();
+    return;
+  }
+  const parts = [];
+  parts.push('Se anulará el comprobante completo');
+  if (policy.sale_date) {
+    const d = new Date(policy.sale_date);
+    parts.push(`Fecha de venta: ${Number.isNaN(d.getTime()) ? policy.sale_date : d.toLocaleDateString('es-GT')}`);
+  }
+  if (policy.days_since_sale != null) {
+    parts.push(`Han pasado ${policy.days_since_sale} día(s) calendario`);
+  }
+  if (policy.within_window) {
+    parts.push('Está dentro del límite de 5 días');
+  } else {
+    parts.push('Está fuera del límite de 5 días: requiere aprobación de admin o superadmin');
+  }
+  if (isDifferentCajaSelected()) {
+    parts.push('La caja seleccionada es distinta a la caja original de la venta: requiere aprobación de admin o superadmin');
+  }
+  if (policy.already_returned || lastLoadedSale?.already_returned) {
+    parts.push('Esta venta ya tiene una anulación registrada y no puede devolverse nuevamente');
+  }
+  setPolicyHint(parts.join('. ') + '.');
+  syncSubmitAvailability();
+}
+
+function syncSubmitAvailability() {
+  const btn = document.getElementById('submitReturn');
+  if (!btn) return;
+  const manual = document.getElementById('manualReturn').value === '1';
+  const blocked = !manual && !!(lastLoadedSale?.already_returned || lastLoadedSale?.return_policy?.already_returned);
+  btn.disabled = blocked;
+  btn.classList.toggle('disabled', blocked);
+}
+
+function normalizeProductPayload(payload){
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
+async function loadProducts() {
+  try {
+    const { ok, data } = await fetchJSON('api/productos', { credentials: 'include' });
+    if (!ok) throw new Error('Respuesta inválida de productos');
+    PRODUCTS = normalizeProductPayload(data);
+  } catch (e) {
+    alert('No se pudieron cargar los productos');
+  }
+}
+
+async function loadOpenCajas() {
+  const sel = document.getElementById('cajaSelect');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">Cargando...</option>';
+  try {
+    const { ok, data } = await fetchJSON('api/open_cajas', { credentials: 'include' });
+    if (!ok || !data || data.ok === false) throw new Error('No se pudieron cargar cajas');
+    OPEN_CAJAS = Array.isArray(data.items) ? data.items : [];
+    if (!OPEN_CAJAS.length) {
+      sel.innerHTML = '<option value="">No hay cajas abiertas</option>';
+      return;
+    }
+    sel.innerHTML = '<option value="">Seleccione caja</option>';
+    OPEN_CAJAS.forEach(c => {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      const branch = c.sucursal ? ` - ${c.sucursal}` : '';
+      const user = c.cajero ? ` (${c.cajero})` : '';
+      opt.textContent = `Caja #${c.id}${branch}${user}`;
+      sel.appendChild(opt);
+    });
+  } catch (e) {
+    sel.innerHTML = '<option value="">Error cargando cajas</option>';
+  }
+}
+
+function selectedCaja() {
+  const sel = document.getElementById('cajaSelect');
+  const cajaId = sel ? Number(sel.value || 0) : 0;
+  if (!cajaId) return { caja_id: null, branch_id: null };
+  const caja = OPEN_CAJAS.find(c => Number(c.id) === cajaId) || {};
+  return {
+    caja_id: cajaId,
+    branch_id: caja.branch_id != null ? Number(caja.branch_id) : null
+  };
+}
+
+function isDifferentCajaSelected() {
+  const saleCajaId = Number(lastLoadedSale?.caja_id || 0);
+  const cajaInfo = selectedCaja();
+  const refundCajaId = Number(cajaInfo.caja_id || 0);
+  return !!saleCajaId && !!refundCajaId && saleCajaId !== refundCajaId;
+}
+
+function clearItemRows() {
+  document.querySelectorAll('.item-row').forEach(n => n.remove());
+  items = [];
+  const tbody = document.querySelector('#itemsTable tbody');
+  if (tbody) tbody.innerHTML = '';
+  document.getElementById('itemsTable').style.display = 'none';
+  document.getElementById('itemsBlock').style.display = 'none';
+}
+
+function renderSaleItems() {
+  const block = document.getElementById('itemsBlock');
+  const table = document.getElementById('itemsTable');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  items = [];
+  if (!SALE_ITEMS.length) {
+    block.style.display = 'none';
+    table.style.display = 'none';
+    return;
+  }
+  block.style.display = '';
+  SALE_ITEMS.forEach((it) => {
+    const qty = Number(it.qty || it.cantidad || 0);
+    const price = Number(it.unit_price || it.precio_unit || 0);
+    const subtotal = it.subtotal != null ? Number(it.subtotal) : qty * price;
+    const productId = Number(it.product_id || it.id_producto || 0);
+    if (productId > 0 && qty > 0) items.push({ product_id: productId, quantity: qty });
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${it.nombre || it.producto || ('Producto #' + (productId || ''))}</td>
+      <td>${qty}</td>
+      <td>Q${subtotal.toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
+  table.style.display = 'table';
+}
+
+function renderServices() {
+  const box = document.getElementById('servicesContainer');
+  const table = document.getElementById('servicesTable');
+  const tbody = table.querySelector('tbody');
+  tbody.innerHTML = '';
+  if (!SALE_SERVICES.length) {
+    box.style.display = 'none';
+    table.style.display = 'none';
+    return;
+  }
+  box.style.display = '';
+  SALE_SERVICES.forEach((sv) => {
+    const tr = document.createElement('tr');
+    const amount = Number(sv.monto ?? sv.precio_unit ?? sv.subtotal ?? sv.total ?? 0);
+    const desc = sv.descripcion || sv.producto || 'Servicio';
+    tr.innerHTML = `
+      <td>${desc}</td>
+      <td>Q${amount.toFixed(2)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  table.style.display = 'table';
+  updateServiceTotal();
+}
+
+function updateServiceTotal() {
+  const total = SALE_SERVICES.reduce(
+    (s, sv) => s + Number(sv.monto ?? sv.precio_unit ?? sv.subtotal ?? sv.total ?? 0),
+    0
+  );
+  const label = document.getElementById('serviceRefundTotal');
+  if (label) label.textContent = total ? `Q ${total.toFixed(2)}` : '—';
+}
+
+function updateTable() {
+  renderSaleItems();
+}
+
+
+async function loadSaleDetails() {
+  if (document.getElementById('manualReturn').value === '1') {
+    return false;
+  }
+  const saleId = parseInt(document.getElementById('saleId').value || '0');
+  if (!saleId) {
+    alert('Ingresa un ID de venta válido');
+    return false;
+  }
+  try {
+    const qs = `id=${saleId}&sale_id=${saleId}&venta_id=${saleId}`;
+    const endpoint = `api/sale_details?${qs}`;
+    const r = await fetchJSON(endpoint, { credentials: 'include' });
+    if (!r.ok || !r.data || !r.data.ok) {
+      const msg = (r && r.data && (r.data.error || r.data.message)) || (r && r.raw && r.raw.slice(0, 300)) || 'No se pudo cargar la venta';
+      alert(msg);
+      return false;
+    }
+
+    const data = r.data;
+    lastLoadedSale = data.sale || null;
+    if (lastLoadedSale) {
+      lastLoadedSale.return_policy = data.return_policy || null;
+      lastLoadedSale.already_returned = !!data.already_returned;
+      lastLoadedSale.returned_total = Number(data.returned_total || 0);
+    }
+    document.getElementById('customerDisplay').value = (data.sale?.customer_name || data.cliente || '—');
+    const total = Number(data.sale?.total || data.total || 0) || 0;
+    document.getElementById('saleTotalDisplay').value = total ? ('Q ' + total.toFixed(2)) : '—';
+
+    clearItemRows();
+    SALE_ITEMS = Array.isArray(data.items) ? data.items : [];
+    SALE_SERVICES = Array.isArray(data.services) ? data.services : [];
+    renderSaleItems();
+    renderServices();
+    renderReturnPolicyHint();
+    return true;
+  } catch (e) {
+    alert('Error de red cargando venta');
+    return false;
+  }
+}
+
+
+function setSinProducto(flag) {
+  const sel = document.getElementById('sinProducto');
+  sel.value = flag ? '1' : '0';
+}
+function toggleSinProductoUI() {
+  const montoRow = document.getElementById('montoRow');
+  const montoHint = document.getElementById('montoHint');
+  const fullReturnNote = document.getElementById('fullReturnNote');
+  const manual = document.getElementById('manualReturn').value === '1';
+  montoRow.style.display = manual ? '' : 'none';
+  montoHint.style.display = manual ? '' : 'none';
+  if (fullReturnNote) fullReturnNote.style.display = manual ? 'none' : '';
+}
+
+function toggleManualUI() {
+  const manual = document.getElementById('manualReturn').value === '1';
+  const saleId = document.getElementById('saleId');
+  const loadBtn = document.getElementById('loadSale');
+  const customer = document.getElementById('customerDisplay');
+  const total = document.getElementById('saleTotalDisplay');
+  const sinProd = document.getElementById('sinProducto');
+  const sinProdRow = document.getElementById('sinProductoRow');
+  const montoRow = document.getElementById('montoRow');
+  const montoHint = document.getElementById('montoHint');
+  const itemsBlock = document.getElementById('itemsBlock');
+  const servicesContainer = document.getElementById('servicesContainer');
+  const servicesTable = document.getElementById('servicesTable');
+  const fullReturnNote = document.getElementById('fullReturnNote');
+
+  if (manual) {
+    saleId.value = '';
+    saleId.disabled = true;
+    loadBtn.disabled = true;
+    loadBtn.classList.add('disabled');
+    customer.value = '';
+    total.value = '';
+    sinProd.value = '1';
+    sinProd.disabled = true;
+    if (sinProdRow) sinProdRow.style.display = 'none';
+    itemsBlock.style.display = 'none';
+    clearItemRows();
+    SALE_ITEMS = [];
+    SALE_SERVICES = [];
+    renderServices();
+    servicesContainer.style.display = 'none';
+    servicesTable.style.display = 'none';
+    montoRow.style.display = '';
+    montoHint.style.display = '';
+    if (fullReturnNote) fullReturnNote.style.display = 'none';
+    lastLoadedSale = null;
+  } else {
+    saleId.disabled = false;
+    loadBtn.disabled = false;
+    loadBtn.classList.remove('disabled');
+    sinProd.disabled = false;
+    sinProd.value = '0';
+    if (sinProdRow) sinProdRow.style.display = 'none';
+    montoRow.style.display = 'none';
+    montoHint.style.display = 'none';
+    if (fullReturnNote) fullReturnNote.style.display = '';
+  }
+  renderReturnPolicyHint();
+}
+
+async function requestReturnApproval(endpoint, payload) {
+  const r = await fetchJSON(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload)
+  });
+  if (r.ok && r.data && r.data.ok) {
+    const approvalUrl = r.data.approval_url || '';
+    const popup = approvalUrl ? window.open(approvalUrl, '_blank') : null;
+    if (approvalUrl && !popup) {
+      window.prompt('Copie el enlace de aprobación:', approvalUrl);
+    }
+    alert('Se solicitó aprobación. Un administrador o superadmin debe autorizar la devolución.');
+    location.reload();
+    return true;
+  }
+  const msg = (r && r.data && (r.data.error || r.data.message)) || (r && r.raw && r.raw.slice(0, 300)) || 'No se pudo solicitar aprobación';
+  alert(msg);
+  return false;
+}
+
+
+async function submitReturn() {
+  const cajaInfo = selectedCaja();
+  if (!cajaInfo.caja_id) {
+    alert('Seleccione la caja a la que se aplicará la devolución');
+    return;
+  }
+  const motive = document.getElementById('motive').value.trim();
+  if (!motive) { alert('Ingrese el motivo de la devolución'); return; }
+  const manual = document.getElementById('manualReturn').value === '1';
+  if (manual) {
+    const amount = Number(document.getElementById('montoDevolver').value || '0');
+    if (!amount || amount <= 0) { alert('Ingrese el monto a devolver'); return; }
+    const payload = {
+      amount,
+      motive,
+      caja_id: cajaInfo.caja_id,
+      branch_id: cajaInfo.branch_id
+    };
+    await requestReturnApproval('api/return_sale_manual_request', payload);
+    return;
+  }
+
+  const saleId = parseInt(document.getElementById('saleId').value || '0');
+  if (!saleId) { alert('Ingresa un ID de venta válido'); return; }
+  if (!lastLoadedSale || Number(lastLoadedSale.id || 0) !== saleId) {
+    const loaded = await loadSaleDetails();
+    if (!loaded) return;
+  }
+  if (lastLoadedSale?.already_returned || lastLoadedSale?.return_policy?.already_returned) {
+    alert('Esta venta ya tiene una anulación registrada.');
+    return;
+  }
+  const payload = {
+    sale_id: saleId,
+    motive,
+    caja_id: cajaInfo.caja_id,
+    branch_id: cajaInfo.branch_id
+  };
+  const policy = lastLoadedSale?.return_policy || null;
+  if ((policy && policy.within_window === false) || isDifferentCajaSelected()) {
+    await requestReturnApproval('api/return_sale_request', payload);
+    return;
+  }
+  try {
+    const r = await fetchJSON('api/return_sale', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+    if (r.ok && r.data && r.data.ok) {
+      alert('Anulación realizada correctamente');
+      location.reload();
+    } else {
+      const msg = (r && r.data && (r.data.error || r.data.message)) || (r && r.raw && r.raw.slice(0, 300)) || 'Error registrando devolución';
+      alert(msg);
+    }
+  } catch (e) {
+    alert('Error de red registrando devolución');
+  }
+}
+
+document.getElementById('submitReturn').onclick = () => submitReturn();
+document.getElementById('loadSale').onclick = () => loadSaleDetails();
+document.getElementById('sinProducto').onchange = toggleSinProductoUI;
+document.getElementById('manualReturn').onchange = toggleManualUI;
+document.getElementById('cajaSelect').onchange = () => renderReturnPolicyHint();
+
+document.getElementById('saleId').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') { e.preventDefault(); loadSaleDetails(); }
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+  await loadOpenCajas();
+  toggleSinProductoUI();
+  toggleManualUI();
+});
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+

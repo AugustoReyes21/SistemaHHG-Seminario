@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Devoluciones a proveedores</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background 0.3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:1000px;margin:20px auto;padding:0 20px;}
+    .form-section{background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.05);margin-bottom:20px;}
+    .form-group{display:flex;gap:12px;margin-bottom:12px;align-items:center;}
+    .form-group select,.form-group input,.form-group textarea{flex:1;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:15px;}
+    .form-group button{padding:8px 12px;border:none;border-radius:6px;background:#2b5876;color:#fff;cursor:pointer;transition:background 0.3s;}
+    .form-group button:hover{background:#4e4376;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;color:#333;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .remove-btn{background:#e74c3c;color:#fff;border:none;padding:4px 8px;border-radius:4px;cursor:pointer;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Devoluciones a proveedores</h1>
+    <div class="form-group">
+      <label style="min-width:140px;">ID de compra</label>
+      <input id="purchaseId" type="number" min="1" placeholder="Ej: 123">
+      <button type="button" id="loadPurchase">Cargar compra</button>
+    </div>
+    <button onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+  </header>
+  <div class="container">
+    <div class="form-section">
+      <div class="form-group">
+        <label for="supplierName">Proveedor:</label>
+        <input id="supplierName" placeholder="Cargue una compra" readonly>
+      </div>
+      <div id="itemsContainer"></div>
+      <div class="form-group">
+        <button id="addItem">Agregar producto</button>
+      </div>
+      <div class="form-group">
+        <label for="motive">Motivo:</label>
+        <textarea id="motive" rows="2" placeholder="Motivo de la devolución (opcional)"></textarea>
+      </div>
+      <div class="form-group" style="justify-content:flex-end;">
+        <button id="submitReturn">Registrar devolución</button>
+      </div>
+    </div>
+    <table id="itemsTable" style="display:none;">
+      <thead>
+        <tr><th>Producto</th><th>Cantidad</th><th></th></tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+<script>
+let PRODUCTS = [];
+let items = [];
+
+function normalizeProductPayload(payload){
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
+async function loadProducts(){
+  try{
+    const res = await fetch('api/productos', { credentials:'include', cache:'no-store' });
+    if(!res.ok) throw res;
+    const payload = await res.json();
+    const prods = normalizeProductPayload(payload);
+    PRODUCTS = prods;
+    const selects = document.querySelectorAll('select.productSelect');
+    selects.forEach(select => {
+      select.innerHTML = '';
+      PRODUCTS.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        const casa = p.casa_nombre || p.casa || p.laboratorio || p.marca || 'Sin casa';
+        opt.textContent = `${p.nombre_comercial} — ${casa}`;
+        select.appendChild(opt);
+      });
+    });
+  }catch(err){
+    alert('No se pudieron cargar los productos');
+  }
+}
+
+function addItemRow(productId=null, quantity=1){
+  const div=document.createElement('div');
+  div.className='form-group item-row';
+  const sel=document.createElement('select');
+  sel.className='productSelect';
+  sel.innerHTML='<option value="">Seleccione producto</option>';
+  PRODUCTS.forEach(p=>{
+    const opt=document.createElement('option');
+    opt.value=p.id;
+    const casa = p.casa_nombre || p.casa || p.laboratorio || p.marca || 'Sin casa';
+    opt.textContent=`${p.nombre_comercial} — ${casa}`;
+    sel.appendChild(opt);
+  });
+  if (productId) sel.value = String(productId);
+  sel.onchange=updateTable;
+
+  const qty=document.createElement('input');
+  qty.type='number';
+  qty.min='1';
+  qty.value=String(quantity||1);
+  qty.style.width='80px';
+  qty.oninput=updateTable;
+
+  const remove=document.createElement('button');
+  remove.type='button';
+  remove.className='remove-btn';
+  remove.textContent='X';
+  remove.onclick=()=>{div.remove();updateTable();};
+
+  div.appendChild(sel);
+  div.appendChild(qty);
+  div.appendChild(remove);
+  document.getElementById('itemsContainer').appendChild(div);
+  updateTable();
+}
+
+function updateTable(){
+  const rows=document.querySelectorAll('.item-row');
+  const tbody=document.querySelector('#itemsTable tbody');
+  tbody.innerHTML='';
+  items = [];
+  let has=false;
+  rows.forEach(row=>{
+    const prodId=row.querySelector('select').value;
+    const qty=row.querySelector('input').value;
+    if(prodId){
+      has=true;
+      const prod=PRODUCTS.find(p=>String(p.id)===String(prodId));
+      items.push({product_id: parseInt(prodId), quantity: parseInt(qty||'0')});
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td>${prod ? (prod.nombre_comercial + ' — ' + (prod.casa_nombre || prod.casa || prod.laboratorio || prod.marca || 'Sin casa')) : ''}</td><td>${qty}</td><td></td>`;
+      tbody.appendChild(tr);
+    }
+  });
+  document.getElementById('itemsTable').style.display=has?'table':'none';
+}
+
+async function submitReturn(){
+  const pid = parseInt(document.getElementById('purchaseId').value || '0');
+  if (!pid) { alert('Ingresa un ID de compra válido'); return; }
+  if(items.length===0){ alert('Agregue al menos un producto'); return; }
+  const motive=document.getElementById('motive').value;
+  const payload = { items: items, motive: motive, purchase_id: pid };
+  try{
+    const res=await fetch('api/return_supplier',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(payload)});
+    const data=await res.json();
+    if(res.ok && data.ok){ alert('Devolución registrada'); location.reload(); }
+    else{ alert(data.error||'Error registrando devolución'); }
+  }catch(err){ alert('Error registrando devolución'); }
+}
+
+async function loadPurchaseDetails() {
+  const pid = parseInt(document.getElementById('purchaseId').value || '0');
+  if (!pid) { alert('Ingresa un ID de compra válido'); return; }
+  try {
+    const res = await fetch(`api/purchase_details?purchase_id=${pid}`, { credentials: 'include' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) { alert(data.error || 'No se pudo cargar la compra'); return; }
+    const supplierInput = document.getElementById('supplierName');
+    if (supplierInput) {
+      supplierInput.value = data.purchase?.supplier_name || '';
+    }
+    document.querySelectorAll('.item-row').forEach(r=>r.remove());
+    (data.items || []).forEach(it => addItemRow(it.product_id, it.qty));
+    updateTable();
+    alert('Compra cargada. Ajusta cantidades si deseas y registra la devolución.');
+  } catch (e) {
+    alert('Error cargando compra');
+  }
+}
+
+document.getElementById('addItem').onclick=()=>{ addItemRow(); };
+document.getElementById('submitReturn').onclick=()=>{ submitReturn(); };
+document.getElementById('loadPurchase').onclick = () => { loadPurchaseDetails(); };
+document.addEventListener('DOMContentLoaded', () => { loadProducts(); addItemRow(); });
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+

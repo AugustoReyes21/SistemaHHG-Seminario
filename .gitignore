@@ -1,0 +1,34 @@
+# Dependencias
+node_modules/
+
+# Secretos y configuracion local
+.env
+.env.*
+!.env.example
+!.env.test.example
+certs/
+*.pfx
+*.key
+*.cer
+*.crt
+mkcert.exe
+
+# Datos operativos / personales (no se versionan)
+backups/
+logs/
+*.log
+server/audit/*.jsonl
+api/invoices/
+uploads/avatars/*
+!uploads/avatars/.gitkeep
+js/*.xlsx
+hosts.txt
+
+# Sistema operativo / editores
+.DS_Store
+Thumbs.db
+.vscode/
+
+# Resultados de pruebas
+coverage/
+test-results/

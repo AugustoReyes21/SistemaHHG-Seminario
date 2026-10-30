@@ -1,0 +1,52 @@
+{
+  "scripts": {
+    "start": "node server/index.js",
+    "start:tailscale": "tailscale serve --bg --yes 3000 && node server/index.js",
+    "tailscale:status": "tailscale serve status",
+    "lint": "eslint server/routes/inventory.js server/utils server/middleware tests scripts",
+    "format": "prettier --write \"**/*.{js,json,md,html,css}\"",
+    "test": "node --test",
+    "backup": "node scripts/backup.js",
+    "restore": "node scripts/restore.js",
+    "prepare": "husky install"
+  },
+  "lint-staged": {
+    "*.{js,json,md}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{html,css}": [
+      "prettier --write"
+    ]
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "connect-pg-simple": "^10.0.0",
+    "cookie-parser": "^1.4.6",
+    "dotenv": "^16.4.5",
+    "exceljs": "^4.4.0",
+    "express": "^4.21.2",
+    "express-rate-limit": "^7.5.0",
+    "express-session": "^1.18.0",
+    "helmet": "^7.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.16.0",
+    "nodemailer": "^8.0.1",
+    "pdfkit": "^0.15.0",
+    "pg": "^8.17.1",
+    "pngjs": "^7.0.0",
+    "xlsx-js-style": "^1.2.0",
+    "zod": "^3.25.1"
+  },
+  "devDependencies": {
+    "eslint": "^10.0.2",
+    "eslint-config-prettier": "^9.0.0",
+    "husky": "^9.0.0",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.4.1"
+  },
+  "overrides": {
+    "uuid": "^11.1.1"
+  }
+}

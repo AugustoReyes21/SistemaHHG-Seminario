@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Historial de Traslados</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;}
+    .container{max-width:1100px;margin:20px auto;padding:0 16px;}
+    .card{background:#fff;padding:16px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.05);margin-bottom:16px;}
+    .filters{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;}
+    .filters label{display:block;font-size:12px;color:#666;margin-bottom:4px;}
+    .filters input{padding:8px;border:1px solid #ccc;border-radius:6px;font-size:14px;}
+    .btn{padding:8px 12px;border:none;border-radius:6px;background:#2b5876;color:#fff;cursor:pointer;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;color:#333;}
+    tr:last-child td{border-bottom:none;}
+    .muted{color:#666;font-size:13px;}
+  </style>
+  <base href="/Pos/merged/">
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1 data-i18n="Historial de Traslados">Historial de Traslados</h1>
+    <div><button onclick="window.location='traslados.html'" class="back-btn" data-i18n="Volver">Volver</button></div>
+  </header>
+  <div class="container">
+    <div class="card">
+      <div class="filters">
+        <div>
+          <label data-i18n="Solicitante">Solicitante</label>
+          <input id="fName" data-i18n-placeholder="Nombre del solicitante" placeholder="Nombre del solicitante">
+        </div>
+        <div>
+          <label data-i18n="Desde">Desde</label>
+          <input id="fStart" type="date">
+        </div>
+        <div>
+          <label data-i18n="Hasta">Hasta</label>
+          <input id="fEnd" type="date">
+        </div>
+        <div>
+          <button id="btnBuscar" class="btn" data-i18n="Buscar">Buscar</button>
+        </div>
+      </div>
+      <div id="hint" class="muted" style="margin-top:8px;" data-i18n="Últimos traslados.">Últimos traslados.</div>
+    </div>
+    <table id="table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th data-i18n="Fecha">Fecha</th>
+          <th data-i18n="Origen">Origen</th>
+          <th data-i18n="Destino">Destino</th>
+          <th data-i18n="Solicitante">Solicitante</th>
+          <th data-i18n="Usuario">Usuario</th>
+          <th data-i18n="Estado">Estado</th>
+          <th data-i18n="Total unidades">Total unidades</th>
+          <th data-i18n="Acciones">Acciones</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+<script>
+function t(key){
+  return (window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key;
+}
+
+async function fetchJSON(url, opts={}) {
+  const resp = await fetch(url, opts);
+  const text = await resp.text();
+  let data = null; try { data = JSON.parse(text); } catch {}
+  return { ok: resp.ok, data, text, status: resp.status };
+}
+
+function fmtDate(value){
+  if(!value) return '';
+  const d = new Date(value);
+  return isNaN(d.getTime()) ? value : d.toISOString().slice(0,19).replace('T',' ');
+}
+
+function normalizeStatus(value){
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 'active';
+  if (['cancelled','canceled','anulado','annulled'].includes(raw)) return 'cancelled';
+  return 'active';
+}
+
+function statusLabel(value){
+  return normalizeStatus(value) === 'cancelled' ? t('Anulado') : t('Activo');
+}
+
+async function cancelTransfer(id){
+  const note = prompt(t('Motivo de anulación del traslado (opcional):'), '') || '';
+  const res = await fetchJSON('api/transfer_cancel', {
+    method: 'POST',
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ transfer_id: id, note })
+  });
+  if (!res.ok || !res.data?.ok) {
+    alert(res.data?.error || t('Error anulando traslado'));
+    return;
+  }
+  alert(t('Traslado anulado correctamente'));
+  await loadData();
+}
+
+async function loadData(){
+  const params = new URLSearchParams();
+  const name = document.getElementById('fName').value.trim();
+  const start = document.getElementById('fStart').value;
+  const end = document.getElementById('fEnd').value;
+  if (name) params.set('name', name);
+  if (start) params.set('from', start);
+  if (end) params.set('to', end);
+  const res = await fetchJSON(`api/transfer_history?${params.toString()}`, { credentials:'include' });
+  if (!res.ok) { alert(res.data?.error || 'Error cargando historial'); return; }
+  const rows = Array.isArray(res.data) ? res.data : [];
+  const tbody = document.querySelector('#table tbody');
+  tbody.innerHTML = '';
+  if (!rows.length) {
+    tbody.innerHTML = `<tr><td colspan="9" class="muted">${t('Sin resultados.')}</td></tr>`;
+    return;
+  }
+  rows.forEach(r=>{
+    const normalizedStatus = normalizeStatus(r.status || (r.cancelled_at ? 'cancelled' : 'active'));
+    const tr = document.createElement('tr');
+    const actions = [
+      `<button class="btn btn-receipt" data-id="${r.id}" data-i18n="Ver comprobante">${t('Ver comprobante')}</button>`
+    ];
+    if (normalizedStatus !== 'cancelled') {
+      actions.push(`<button class="btn btn-cancel" data-cancel-id="${r.id}" data-i18n="Anular" style="background:#b02c2c;">${t('Anular')}</button>`);
+    }
+    tr.innerHTML = `
+      <td>${r.id}</td>
+      <td>${fmtDate(r.created_at || r.fecha || '')}</td>
+      <td>${r.source_name || ''}</td>
+      <td>${r.target_name || ''}</td>
+      <td>${r.requester_name || ''}</td>
+      <td>${r.usuario || ''}</td>
+      <td>${statusLabel(normalizedStatus)}</td>
+      <td>${r.total_quantity != null ? r.total_quantity : ''}</td>
+      <td style="display:flex;gap:8px;flex-wrap:wrap;">${actions.join('')}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+  tbody.querySelectorAll('button[data-id]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const id = btn.getAttribute('data-id');
+      const lang = (window.I18N && window.I18N.getLang) ? window.I18N.getLang() : (localStorage.getItem('app_lang') || 'es');
+      const url = `api/transfer_receipt?id=${encodeURIComponent(id)}&lang=${encodeURIComponent(lang)}`;
+      window.open(url, '_blank');
+    });
+  });
+  tbody.querySelectorAll('button[data-cancel-id]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      const id = Number(btn.getAttribute('data-cancel-id') || 0);
+      if (!id) return;
+      const confirmText = t('¿Desea anular el traslado #{id}? Esto devolverá el stock al origen.').replace('#{id}', id);
+      if (!confirm(confirmText)) return;
+      await cancelTransfer(id);
+    });
+  });
+  if (window.I18N && typeof window.I18N.applyTranslations === 'function') {
+    window.I18N.applyTranslations();
+  }
+}
+
+document.getElementById('btnBuscar').addEventListener('click', loadData);
+loadData().catch(console.error);
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Recuperar contraseña</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body class="auth">
+  <main class="auth-shell">
+    <section class="auth-hero">
+      <div class="brand">
+        <img class="brand-logo" src="https://hospitalhilariogalindo.org/wp-content/uploads/2024/12/logo_mc.png" alt="Logo">
+        <div>
+          <h1>Recuperación segura</h1>
+          <p>Verificación rápida para restablecer tu acceso.</p>
+        </div>
+      </div>
+      <div class="hero-card">
+        <h3>Protección integrada</h3>
+        <p>El enlace expira automáticamente y se registra en bitácora.</p>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <h2>¿Olvidaste tu contraseña?</h2>
+      <p>Ingresa tu usuario o correo y enviamos el enlace de restablecimiento.</p>
+      <form id="forgotForm">
+        <div class="form-row">
+          <label for="username">Usuario o correo</label>
+          <input name="username" id="username" placeholder="Usuario o correo" required>
+        </div>
+        <button type="submit">Enviar enlace</button>
+      </form>
+      <div id="msg"></div>
+      <a class="ghost-link" href="login.html">Volver al inicio de sesión</a>
+    </section>
+  </main>
+  <script src="js/forgot.js"></script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+

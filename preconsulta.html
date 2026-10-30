@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="css/style.css">  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Pre-consulta</title>
+  <style>
+    :root{
+      --accent:#2563eb;
+      --bg:#f5f6fb;
+      --text:#1f2937;
+      --muted:#6b7280;
+    }
+    body{
+      margin:0;
+      font-family:'Segoe UI',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      min-height:100vh;
+    }
+    .sidebar{
+      width:220px;
+      background:#fff;
+      color:var(--accent);
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      padding:16px 12px;
+      border-right:1px solid #e5e7eb;
+    }
+    .sidebar h3{margin:0 0 10px 0;font-size:18px;color:var(--accent);}
+    .nav-link{
+      color:var(--accent);
+      text-decoration:none;
+      padding:10px 12px;
+      border-radius:8px;
+      display:block;
+      font-weight:600;
+    }
+    .nav-link:hover,.nav-link.active{background:#e9eef7;}
+    .content{flex:1;display:flex;flex-direction:column;}
+    header{
+      background:var(--accent);
+      color:#fff;
+      padding:12px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    header h2{margin:0;font-size:18px;}
+    header button{
+      background:#fff;
+      color:var(--accent);
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .container{max-width:1200px;margin:18px auto;padding:0 16px;width:100%;}
+    .grid{display:grid;grid-template-columns:1fr 360px;gap:16px;align-items:start;}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    label{font-weight:600;display:block;margin:6px 0 3px;}
+    input,textarea{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left;}
+    th{background:#f8fafc;}
+    button.primary{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;}
+    .muted{color:var(--muted);font-size:13px;}
+    @media(max-width:1000px){
+      body{flex-direction:column;}
+      .sidebar{width:auto;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid #e5e7eb;}
+      .grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <aside class="sidebar" aria-label="Navegación pre-consulta">
+    <h3>Pre-consulta</h3>
+    <a class="nav-link active" href="preconsulta.html">Toma de datos</a>
+    <a class="nav-link" href="historial_consultas.html">Historial</a>
+    <a class="nav-link" href="#" onclick="logout();return false;">Salir</a>
+  </aside>
+  <div class="content">
+    <header class="app-header">
+      <h2>Pre-consulta</h2>
+      
+    </header>
+
+    <main class="container">
+      <div class="grid">
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">Pacientes pendientes</h3>
+          <div id="lista">Cargando...</div>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">Capturar signos</h3>
+          <div id="selPaciente" class="muted">Seleccione paciente</div>
+          <label>Peso (kg)</label><input id="sPeso" type="number" step="0.01">
+          <label>Talla (m)</label><input id="sTalla" type="number" step="0.01">
+          <label>Temperatura (°C)</label><input id="sTemp" type="number" step="0.1">
+          <label>Presión</label><input id="sPresion" placeholder="120/80">
+          <label>Frecuencia cardiaca</label><input id="sFc" type="number">
+          <label>Frecuencia respiratoria</label><input id="sFr" type="number">
+          <label>Saturación O2</label><input id="sSat" type="number">
+          <label>Otros</label><textarea id="sOtros" rows="2"></textarea>
+          <div style="margin-top:8px;text-align:right;">
+            <button id="btnGuardarSignos" class="primary">Guardar signos</button>
+          </div>
+          <div id="msg" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+<script>
+let CURRENT_ID = null;
+async function logout(){ try{await fetch('api/logout',{credentials:'include'});}catch(e){} location.href='login.html'; }
+async function auth(){
+  const r=await fetch('api/auth_check',{credentials:'include'});
+  const d=await r.json().catch(()=>({ok:false}));
+  if(!d.ok || !['preconsulta','superadmin'].includes((d.user.rol||'').toLowerCase())){ alert('Acceso restringido'); location.href='login.html'; }
+}
+async function cargar(){
+  const res = await fetch('api/consultas?estado=pendiente',{credentials:'include'});
+  const rows = await res.json().catch(()=>[]);
+  const box = document.getElementById('lista');
+  if(!rows.length){ box.innerText='Sin pacientes'; return; }
+  let html = '<table><thead><tr><th></th><th>Paciente</th><th>Médico</th><th>Motivo</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += `<tr><td><button onclick="selectPac(${r.id},'${r.paciente||''}')">Atender</button></td><td>${r.paciente||''}</td><td>${r.medico||''} ${r.consultorio ? '('+r.consultorio+')' : ''}</td><td>${r.motivo||''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+window.selectPac = (id,nombre)=>{
+  CURRENT_ID = id;
+  document.getElementById('selPaciente').innerText = `Paciente: ${nombre} (#${id})`;
+};
+async function guardar(){
+  if(!CURRENT_ID){ alert('Seleccione un paciente'); return; }
+  const payload = {
+    id: CURRENT_ID,
+    peso: document.getElementById('sPeso').value,
+    talla: document.getElementById('sTalla').value,
+    temp: document.getElementById('sTemp').value,
+    presion: document.getElementById('sPresion').value,
+    fc: document.getElementById('sFc').value,
+    fr: document.getElementById('sFr').value,
+    saturacion: document.getElementById('sSat').value,
+    otros: document.getElementById('sOtros').value
+  };
+  const res = await fetch('api/consultas',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=>({ok:false}));
+  const msg = document.getElementById('msg');
+  if(!res.ok || !d.ok){ msg.innerText = d.error||'Error'; msg.style.color='#b91c1c'; return; }
+  msg.innerText = 'Signos guardados y enviado al médico';
+  msg.style.color='#2563eb';
+  CURRENT_ID = null;
+  document.getElementById('selPaciente').innerText = 'Seleccione paciente';
+  ['sPeso','sTalla','sTemp','sPresion','sFc','sFr','sSat','sOtros'].forEach(id=>document.getElementById(id).value='');
+  cargar();
+}
+(async function(){
+  await auth();
+  document.getElementById('btnGuardarSignos').onclick = guardar;
+  await cargar();
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Registrar compra</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    label {
+      font-weight: 600;
+      margin-bottom: 6px;
+      display: block;
+    }
+    button.primary {
+      background: #2b5876;
+      color: #fff;
+      border: none;
+      padding: 10px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button.primary:hover { background: #4e4376; }
+  </style>
+</head>
+<body class="app app-compra app-bg-photo hide-legacy-actions">
+  <nav id="sideNav" class="side-nav" style="display:none;">
+    <ul id="sideNavList"></ul>
+  </nav>
+  <header class="app-header">
+    <h1>Registrar compra</h1>
+    <div class="app-actions">
+      <button class="secondary back-btn" onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+    </div>
+  </header>
+  <div class="container">
+    <div class="card">
+      <form id="purchaseForm" onsubmit="return false;">
+        <label>Proveedor</label>
+        <select id="supplierSelect"><option value="">Selecciona un proveedor...</option></select>
+        <label>Sucursal</label>
+        <select id="branchSelect"><option value="">Sucursal (cargando...)</option></select>
+        <label>Tipo de pago</label>
+        <select id="paymentType">
+          <option value="contado">Contado</option>
+          <option value="crédito">Crédito</option>
+        </select>
+        <label>Forma de pago</label>
+        <select id="paymentForm">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+        <label data-i18n="Número de factura">Número de factura</label>
+        <input id="invoiceNumber" type="text" placeholder="Ej: A-12345" data-i18n-placeholder="Ej: A-12345">
+        <div id="cuotasRow" style="display:none;">
+          <label>Cuotas</label>
+          <input id="cuotas" type="number" min="1" step="1" value="1">
+        </div>
+        <label>Producto</label>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+          <select id="productSelect" style="flex:1 1 260px; min-width:0;"></select>
+          <button type="button" id="btnQuickProduct" class="btn btn-secondary" style="white-space:nowrap; flex:0 0 auto;">+ Nuevo</button>
+        </div>
+        <label>Cantidad</label>
+        <input id="quantity" type="number" min="1" step="1" value="1">
+        <label>Precio unitario</label>
+        <input id="unitPrice" type="number" min="0" step="0.01">
+        <label data-i18n="Precio de venta">Precio de venta</label>
+        <input id="salePrice" type="number" min="0" step="0.01" placeholder="Precio de venta" data-i18n-placeholder="Precio de venta">
+        <label>Número de lote</label>
+        <input id="lotNumber" type="text">
+        <label>Fecha de vencimiento</label>
+        <input id="expiryDate" type="date" required>
+        <div style="display:flex; justify-content:flex-end; gap:8px;">
+          <button type="button" id="submitPurchase" class="primary">Registrar compra</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script>
+  async function parseJsonSafe(res){
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    if (ct.includes('application/json')) return await res.json();
+    const txt = await res.text();
+    try { return JSON.parse(txt); } catch (e) { throw new Error(txt || 'Respuesta no válida'); }
+  }
+
+  function t(key){
+    return (window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key;
+  }
+
+  let USER_ROLE = '';
+  function setupSideNav(){
+    const nav = document.getElementById('sideNav');
+    const list = document.getElementById('sideNavList');
+    if(!nav || !list) return;
+    list.innerHTML = '';
+    let items = [];
+    if(USER_ROLE === 'admin' || USER_ROLE === 'administrador'){
+      items = [
+        { text:'Inventario', href:'inventario.html' },
+        { text:'Usuarios', href:'users.html' },
+        { text:'Registrar compra', href:'registrar_compra.html' },
+        { text:'Historial de compras', href:'historial_compras.html' },
+        { text:'Devoluciones proveedores', href:'devoluciones_proveedores.html' },
+        { text:'Devoluciones ventas', href:'devoluciones_ventas.html' },
+        { text:'Bancos', href:'bancos.html' },
+        { text:'Bitácora', href:'bitacora.html' },
+        { text:'Contabilidad', href:'contabilidad.html' }
+      ];
+    } else if(USER_ROLE === 'contabilidad'){
+      items = [
+        { text:'Inventario', href:'inventario.html' },
+        { text:'Registrar compra', href:'registrar_compra.html' },
+        { text:'Historial de compras', href:'historial_compras.html' },
+        { text:'Traslado de productos', href:'traslados.html' },
+        { text:'Devoluciones proveedores', href:'devoluciones_proveedores.html' },
+        { text:'Devoluciones ventas', href:'devoluciones_ventas.html' },
+        { text:'Bancos', href:'bancos.html' },
+        { text:'Bitácora', href:'bitacora.html' },
+        { text:'Contabilidad', href:'contabilidad.html' },
+      ];
+    } else if(USER_ROLE === 'cashier' || USER_ROLE === 'cajero'){
+      items = [
+        { text:'Ventas', href:'ventas.html' },
+        { text:'Historial de ventas', href:'historial_ventas.html' }
+      ];
+    }
+    if(items.length > 0){
+      nav.style.display = 'block';
+      document.body.style.marginLeft = '200px';
+      items.forEach(item => {
+        const li = document.createElement('li');
+        li.style.padding = '10px 20px';
+        li.style.borderBottom = '1px solid #e0e0e0';
+        const a = document.createElement('a');
+        a.textContent = item.text;
+        a.href = item.href;
+        a.style.color = '#2b5876';
+        a.style.textDecoration = 'none';
+        a.style.display = 'block';
+        a.style.width = '100%';
+        li.appendChild(a);
+        list.appendChild(li);
+      });
+    }
+  }
+
+  function normalizeProductPayload(payload){
+    if (Array.isArray(payload)) return payload;
+    if (payload && Array.isArray(payload.items)) return payload.items;
+    return [];
+  }
+
+  async function apiGet(url){
+    const r = await fetch(url, { credentials:'include', cache:'no-store' });
+    if(!r.ok) throw r;
+    const payload = await r.json();
+    return normalizeProductPayload(payload);
+  }
+
+  async function fetchJSON(url, options = {}) {
+    const res = await fetch(url, { credentials: 'include', cache: 'no-store', ...options });
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    const json =
+      ct.includes('application/json') ? await res.json().catch(() => null) : null;
+    if (!res.ok) {
+      const message = (json && (json.error || json.message)) || `HTTP ${res.status}`;
+      throw new Error(message);
+    }
+    return json;
+  }
+
+  async function loadBranches(){
+    try{
+      const data = await apiGet('api/branches');
+      const sel = document.getElementById('branchSelect');
+      sel.innerHTML = '<option value="">Seleccionar sucursal</option>';
+      data.forEach(b => sel.appendChild(new Option(b.name, b.id)));
+    }catch(e){
+      console.warn('Sin sucursales');
+    }
+  }
+  
+  async function loadSuppliers(){
+    try{
+      const data = await fetchJSON('api/proveedores');
+      const proveedores = Array.isArray(data) ? data : (data?.proveedores || []);
+      const select = document.getElementById('supplierSelect');
+      if (!select) return;
+      select.innerHTML = '<option value="">Selecciona un proveedor...</option>';
+      proveedores.forEach(s=>{
+        const opt = document.createElement('option');
+        const valor = s.id || s.nombre || '';
+        opt.value = valor;
+        opt.textContent = s.nombre || s.razon_social || valor || 'Proveedor';
+        select.appendChild(opt);
+      });
+    }catch(e){
+      console.error('Error proveedores', e);
+    }
+  }
+
+  async function loadProductos(){
+    try{
+      const prods = await apiGet('api/productos');
+      const select = document.getElementById('productSelect');
+      select.innerHTML = '';
+      prods.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.id;
+        const casa = p.casa_nombre || p.casa || p.laboratorio || p.marca || 'Sin casa';
+        opt.textContent = `${p.nombre_comercial} — ${casa} (stock ${p.stock})`;
+        select.appendChild(opt);
+      });
+    }catch(err){
+      console.error('Error cargando productos', err);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    try{
+      let authResp = null;
+      try {
+        authResp = await fetchJSON('api/auth_check');
+      } catch {
+        return location.href = 'login.html';
+      }
+      USER_ROLE = (authResp.user?.rol || '').toLowerCase();
+      if(USER_ROLE !== 'admin' && USER_ROLE !== 'administrador' && USER_ROLE !== 'contabilidad' && USER_ROLE !== 'superadmin'){
+        alert('No autorizado');
+        return location.href = 'inventario.html';
+      }
+      setupSideNav();
+      await loadBranches();
+      await loadProductos();
+
+      const paymentTypeSel = document.getElementById('paymentType');
+      paymentTypeSel.addEventListener('change', () => {
+        const row = document.getElementById('cuotasRow');
+        if(paymentTypeSel.value === 'crédito'){
+          row.style.display = 'block';
+        } else {
+          row.style.display = 'none';
+        }
+      });
+
+      await loadSuppliers();
+
+      document.getElementById('submitPurchase').onclick = async () => {
+        const supplierSelect = document.getElementById('supplierSelect');
+        const supplierName = supplierSelect && supplierSelect.value ? supplierSelect.options[supplierSelect.selectedIndex].text : '';
+        const branch = document.getElementById('branchSelect').value || null;
+        const paymentType = document.getElementById('paymentType').value || 'contado';
+        const paymentForm = document.getElementById('paymentForm').value || 'efectivo';
+        const cuotas = paymentType === 'crédito' ? parseInt(document.getElementById('cuotas').value || '0') : 0;
+        const productId = parseInt(document.getElementById('productSelect').value);
+        const qty = parseFloat(document.getElementById('quantity').value || '0');
+        const price = parseFloat(document.getElementById('unitPrice').value || '0');
+        const salePriceVal = document.getElementById('salePrice').value || '';
+        const lot = document.getElementById('lotNumber').value || '';
+        const expiry = document.getElementById('expiryDate').value || '';
+        const invoiceNumber = (document.getElementById('invoiceNumber').value || '').trim();
+
+        if (!productId || qty <= 0 || price <= 0) {
+          alert(t('Datos de compra inválidos'));
+          return;
+        }
+        if (salePriceVal === '' || parseFloat(salePriceVal) <= 0) {
+          alert(t('Ingrese un precio de venta válido'));
+          return;
+        }
+
+        const payload = {
+          supplier_name: supplierName,
+          branch_id: branch ? parseInt(branch) : null,
+          payment_type: paymentType,
+          payment_form: paymentForm,
+          cuotas: cuotas,
+          invoice_number: invoiceNumber || null,
+          items: [{
+            product_id: productId,
+            quantity: qty,
+            unit_price: price,
+            sale_price: parseFloat(salePriceVal),
+            lot_number: lot,
+            expiry_date: expiry
+          }]
+        };
+
+        
+        const parseJsonSafe = async (res) => {
+          const ct = (res.headers.get('content-type') || '').toLowerCase();
+          if (ct.includes('application/json')) {
+            return await res.json();
+          }
+          const text = await res.text(); 
+          console.error('Respuesta no JSON del servidor:', text);
+          throw new Error('El servidor respondió con HTML/error. Revisa la consola para el detalle.');
+        };
+
+        try {
+          const res = await fetch('api/register_purchase', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+          });
+
+          let data;
+          try {
+            data = await parseJsonSafe(res);
+          } catch (e) {
+            alert('Error al registrar compra: ' + e.message);
+            return;
+          }
+
+          if (res.ok && data && data.ok) {
+            alert('Compra registrada');
+            document.getElementById('purchaseForm').reset();
+            document.getElementById('cuotasRow').style.display = 'none';
+          } else {
+            alert((data && data.error) ? data.error : 'Error al registrar compra');
+          }
+        } catch (err) {
+          console.error('Error al registrar compra', err);
+          alert('Error al registrar compra');
+        }
+      };
+    
+      
+      try { await loadProducts('productSelect'); } catch {}
+
+      
+      const btnQP = document.getElementById('btnQuickProduct');
+      if (btnQP) btnQP.addEventListener('click', openQuickProductModal);
+     
+      const qpCancel = document.getElementById('qp_cancel');
+      const qpSave = document.getElementById('qp_save');
+      if (qpCancel) qpCancel.addEventListener('click', closeQuickProductModal);
+      if (qpSave) qpSave.addEventListener('click', saveQuickProduct);
+} catch(err){
+      console.error('Inicialización fallida', err);
+      alert('Error inicializando la página');
+    }
+  });
+  
+   
+    async function loadProducts(selectId = 'productSelect') {
+      try {
+        const res = await fetch('api/productos', { credentials: 'include' });
+        const data = await parseJsonSafe(res);
+        const sel = document.getElementById(selectId);
+        if (!sel) return;
+        sel.innerHTML = '<option value="">Seleccione...</option>';
+        for (const p of data) {
+          const opt = document.createElement('option');
+          opt.value = p.id;
+          const desc = [p.nombre_comercial, p.presentacion, p.principio_activo, p.casa].filter(Boolean).join(' | ');
+          opt.textContent = desc;
+          sel.appendChild(opt);
+        }
+      } catch (e) {
+        console.error('No se pudo cargar productos', e);
+      }
+    }
+
+    function openQuickProductModal() {
+      document.getElementById('quickProductModal').style.display = 'flex';
+      document.getElementById('qp_nombre_comercial').focus();
+    }
+    function closeQuickProductModal() {
+      document.getElementById('quickProductModal').style.display = 'none';
+      document.getElementById('qp_nombre_comercial').value = '';
+      document.getElementById('qp_principio_activo').value = '';
+      document.getElementById('qp_casa').value = '';
+    }
+
+    async function saveQuickProduct() {
+      const nombre_comercial = document.getElementById('qp_nombre_comercial').value.trim();
+      const principio_activo = document.getElementById('qp_principio_activo').value.trim();
+      const casa = document.getElementById('qp_casa').value.trim();
+      if (!nombre_comercial) {
+        alert('El nombre comercial es obligatorio.');
+        return;
+      }
+      try {
+        const res = await fetch('api/productos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ nombre_comercial, principio_activo, casa })
+        });
+        const data = await parseJsonSafe(res);
+        if (!res.ok || !data || data.ok !== true) {
+          throw new Error((data && data.error) || 'No se pudo crear el producto');
+        }
+        
+        const newId = data.id;
+        await loadProducts('productSelect');
+        const sel = document.getElementById('productSelect');
+        if (sel && newId) sel.value = String(newId);
+        closeQuickProductModal();
+      
+        try { alert('Producto creado'); } catch{}
+      } catch (e) {
+        console.error('Error creando producto', e);
+        alert('Error creando producto: ' + e.message);
+      }
+    }
+
+  </script>
+
+ 
+  <div id="quickProductModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,.4); z-index:9999; align-items:center; justify-content:center;">
+    <div style="background:#fff; width:min(520px, 92vw); border-radius:12px; box-shadow:0 12px 30px rgba(0,0,0,.2); overflow:hidden;">
+      <div style="padding:14px 18px; border-bottom:1px solid #eee; font-weight:600;">Registrar nuevo producto</div>
+      <div style="padding:16px 18px; display:grid; grid-template-columns:1fr; gap:10px;">
+        <label style="display:grid; gap:6px;">
+          <span>Nombre comercial *</span>
+          <input id="qp_nombre_comercial" type="text" placeholder="Ej. Paracetamol 500 mg" required>
+        </label>
+        <label style="display:grid; gap:6px;">
+          <span>Principio activo</span>
+          <input id="qp_principio_activo" type="text" placeholder="Ej. Acetaminofén">
+        </label>
+        <label style="display:grid; gap:6px;">
+          <span>Casa / Proveedor</span>
+          <input id="qp_casa" type="text" placeholder="Ej. Genfar / Farmacia La Unión">
+        </label>
+        <small style="color:#666;">Se guardará únicamente con estos tres campos. Podrás completar otros datos más tarde en Inventario.</small>
+      </div>
+      <div style="padding:12px 18px; border-top:1px solid #eee; display:flex; gap:10px; justify-content:flex-end;">
+        <button type="button" id="qp_cancel" class="btn btn-secondary">Cancelar</button>
+        <button type="button" id="qp_save" class="btn btn-primary">Guardar</button>
+      </div>
+    </div>
+  </div>
+
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+

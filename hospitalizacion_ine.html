@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Historial INE Hospitalización</title>
+  <style>
+    main{max-width:none;margin:20px 20px;padding:0 10px;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;}
+    th,td{border:1px solid #e5e7eb;padding:6px;font-size:13px;text-align:left;}
+    th{background:#f8fafc;}
+    button.back,button.logout{background:#fff;color:#2b5876;border:none;border-radius:8px;padding:8px 12px;cursor:pointer;font-weight:600;}
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-top:14px;}
+    .filters label{font-size:12px;color:#555;}
+    .filters input,.filters select{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <div class="content">
+    <header class="app-header">
+      <h2>Historial INE Hospitalización</h2>
+      <div>
+        <button class="back back-btn" onclick="location.href='hospitalizacion_ine_form.html'">Volver</button>
+      </div>
+    </header>
+    <main>
+      <div class="card" style="padding:16px;">
+      <div class="filters">
+        <div><label>Desde</label><input type="date" id="fStart"></div>
+        <div><label>Hasta</label><input type="date" id="fEnd"></div>
+        <div><label>Sexo</label><select id="fSexo"><option value="">Todos</option><option>Mujer</option><option>Hombre</option></select></div>
+        <div><label>Condición egreso</label><select id="fCond"><option value="">Todas</option><option>Vivo</option><option>Fallecido</option></select></div>
+        <div><label>Buscar (diag, trat, muni)</label><input type="text" id="fQuery" placeholder="Texto a buscar..."></div>
+        <div style="display:flex;align-items:flex-end;gap:8px;">
+          <button class="back" id="btnFiltrar" style="margin:0;">Aplicar</button>
+          <button class="logout" id="btnLimpiar" style="margin:0;">Limpiar</button>
+        </div>
+      </div>
+      <div id="hist" class="muted" style="margin-top:10px;">Cargando...</div>
+      </div>
+    </main>
+  </div>
+<script>
+const INE_API = 'api/ine_reports';
+let ROWS = [];
+async function auth(){
+  const r=await fetch('api/auth_check',{credentials:'include'});
+  const d=await r.json().catch(()=>({ok:false}));
+  if(!d.ok){ location.href='login.html'; return false; }
+  const role=(d.user.rol||'').toLowerCase();
+  if(role!=='admin' && role!=='cashierh' && role!=='hospital' && role!=='enfermeria' && role!=='superadmin' && role!=='secretaria'){ alert('Acceso restringido'); location.href='login.html'; return false; }
+  return true;
+}
+async function loadData(){
+  const box=document.getElementById('hist');
+  box.innerText='Cargando...';
+  const res=await fetch(INE_API,{credentials:'include'});
+  const rows=await res.json().catch(()=>[]);
+  ROWS = Array.isArray(rows) ? rows.filter(r=> (r.tipo||'').toLowerCase()==='hospitalizacion') : [];
+  render();
+}
+function render(){
+  const box=document.getElementById('hist');
+  const fs=document.getElementById('fStart').value;
+  const fe=document.getElementById('fEnd').value;
+  const sx=(document.getElementById('fSexo').value||'').toLowerCase();
+  const cond=(document.getElementById('fCond').value||'').toLowerCase();
+  const q=(document.getElementById('fQuery').value||'').toLowerCase();
+  const rows = ROWS.filter(r=>{
+    if(fs && (!r.fecha_ingreso || r.fecha_ingreso < fs)) return false;
+    if(fe && (!r.fecha_ingreso || r.fecha_ingreso > fe)) return false;
+    if(sx && (r.sexo||'').toLowerCase()!==sx) return false;
+    if(cond && (r.condicion_egreso||'').toLowerCase()!==cond) return false;
+    if(q){
+      const hay=[r.diagnostico,r.tratamiento,r.municipio].some(v=>(v||'').toLowerCase().includes(q));
+      if(!hay) return false;
+    }
+    return true;
+  });
+  if(!rows.length){ box.innerText='Sin registros'; return; }
+  let html='<table><thead><tr><th>Ingreso</th><th>Egreso</th><th>Orden</th><th>Sexo</th><th>Edad</th><th>Diag</th><th>Tratamiento</th><th>Cond. Egreso</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html+=`<tr><td>${r.fecha_ingreso||r.fecha||''}</td><td>${r.fecha_egreso||''}</td><td>${r.numero_orden||''}</td><td>${r.sexo||''}</td><td>${r.edad_anios||''}</td><td>${r.diagnostico||''}</td><td>${r.tratamiento||''}</td><td>${r.condicion_egreso||''}</td></tr>`;
+  });
+  html+='</tbody></table>';
+  box.innerHTML=html;
+}
+(async()=>{ if(await auth()){ await loadData(); }})();
+document.getElementById('btnFiltrar').onclick = render;
+document.getElementById('btnLimpiar').onclick = ()=>{ ['fStart','fEnd','fSexo','fCond','fQuery'].forEach(id=>{const el=document.getElementById(id); if(el) el.value='';}); render(); };
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body></html>
+
+
+
+
+
+

@@ -1,0 +1,238 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>INE Hospitalización</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#233;display:flex;min-height:100vh;}
+    .sidebar{width:220px;background:#fff;border-right:1px solid #e5e7eb;padding:16px 12px;display:flex;flex-direction:column;gap:8px;}
+    .sidebar h3{margin:0 0 10px 0;color:#2b5876;}
+    .nav-link{color:#2b5876;text-decoration:none;padding:10px 12px;border-radius:8px;font-weight:600;display:block;}
+    .nav-link:hover,.nav-link.active{background:#e9eef7;}
+    .content{flex:1;display:flex;flex-direction:column;}
+    header{background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    main{padding:20px;max-width:1200px;margin:0 auto;}
+    .card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 16px rgba(0,0,0,0.07);}
+    h3{margin-top:0;color:#2b5876;}
+    input,select,textarea{width:100%;padding:8px;border:1px solid #ccd;border-radius:6px;font-size:15px;margin-bottom:10px;}
+    textarea{min-height:60px;resize:vertical;}
+    button.primary{background:#2b5876;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    button.secondary{background:#e5e8ef;color:#2b5876;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    .grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <aside class="sidebar">
+    <h3>Hospital</h3>
+    <a class="nav-link" href="hospitalizacion.html">Hospitalización</a>
+    <a class="nav-link active" href="hospitalizacion_ine_form.html">INE</a>
+    <a class="nav-link" href="hospitalizacion_ine.html">Historial INE</a>
+  </aside>
+  <div class="content">
+    <header class="app-header">
+      <h1>INE Hospitalización</h1>
+      <div>
+        
+        
+      </div>
+    </header>
+    <main>
+      <div class="card">
+        <h3>Captura INE</h3>
+        <div class="grid" style="margin-bottom:8px;">
+          <div>
+            <label>Exportar desde</label>
+            <input type="date" id="ineHospFrom">
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input type="date" id="ineHospTo">
+          </div>
+          <div style="align-self:end;">
+            <button class="secondary" type="button" id="btnHospExport">Generar archivo</button>
+          </div>
+        </div>
+        <form id="ineHospForm">
+          <div class="grid">
+            <div>
+            <label>No. Orden</label>
+            <input type="number" id="ineHospOrden" min="1" placeholder="Opcional">
+          </div>
+          <div>
+            <label>Derecho a IGSS</label>
+            <select id="ineHospIgss">
+              <option value="No">No</option>
+              <option value="Si">Si</option>
+            </select>
+          </div>
+          <div>
+            <label>Fecha de ingreso</label>
+            <input type="date" id="ineHospIngreso">
+          </div>
+          <div>
+              <label>Fecha de egreso</label>
+              <input type="date" id="ineHospEgreso">
+            </div>
+            <div>
+              <label>Sexo</label>
+              <select id="ineHospSexo">
+                <option value="Mujer">Mujer</option>
+                <option value="Hombre">Hombre</option>
+              </select>
+            </div>
+            <div>
+              <label>Pueblo de pertenencia</label>
+              <input id="ineHospPueblo" placeholder="Mestizo/Ladino...">
+            </div>
+            <div>
+              <label>Edad (años)</label>
+              <input type="number" id="ineHospEdad" min="0">
+            </div>
+            <div>
+              <label>Dirección exacta</label>
+              <input id="ineHospDir" placeholder="Ej: Aldea, zona, referencia">
+            </div>
+            <div>
+              <label>Municipio / Departamento</label>
+              <input id="ineHospMuni" placeholder="Municipio / Depto">
+            </div>
+            <div>
+              <label>Condición de egreso</label>
+              <select id="ineHospCond">
+                <option value="Vivo">Vivo</option>
+                <option value="Fallecido">Fallecido</option>
+              </select>
+            </div>
+            <div>
+              <label>Especialidad / Procedimiento</label>
+              <input id="ineHospProc" placeholder="Medicina, cirugía, etc.">
+            </div>
+            <div style="grid-column:1/-1;">
+              <label>Diagnóstico</label>
+              <textarea id="ineHospDiag" rows="2" placeholder="Desde la afección principal a otras"></textarea>
+            </div>
+            <div style="grid-column:1/-1;">
+              <label>Tratamiento médico</label>
+              <textarea id="ineHospTrat" rows="2" placeholder="Medicamentos / procedimientos suministrados"></textarea>
+            </div>
+          </div>
+          <div class="form-actions" style="margin-top:12px;">
+            <button class="primary" type="submit">Guardar INE</button>
+            <button type="button" class="secondary" id="ineHospClear">Limpiar</button>
+          </div>
+        </form>
+      </div>
+    </main>
+  </div>
+<script>
+const INE_API = 'api/ine_reports';
+let HOSPITAL_BRANCH_ID = null;
+async function auth(){
+  const r=await fetch('api/auth_check',{credentials:'include'});
+  const d=await r.json().catch(()=>({ok:false}));
+  if(!d.ok){ location.href='login.html'; return false; }
+  const role=(d.user.rol||'').toLowerCase();
+  if(role!=='admin' && role!=='cashierh' && role!=='hospital' && role!=='enfermeria' && role!=='superadmin' && role!=='secretaria'){ alert('Acceso restringido'); location.href='login.html'; return false; }
+  return true;
+}
+async function loadBranches(){
+  try{
+    const res = await fetch('api/branches',{credentials:'include'});
+    const data = await res.json();
+    if(Array.isArray(data) && data.length){
+      const hospital = data.find(b=> (b.name||'').toLowerCase().includes('hospital'));
+      HOSPITAL_BRANCH_ID = hospital ? Number(hospital.id) : Number(data[0].id);
+    }
+  }catch(e){ console.error(e); }
+}
+async function saveIne(e){
+  e.preventDefault();
+  const payload = {
+    tipo: 'hospitalizacion',
+    numero_orden: document.getElementById('ineHospOrden').value || null,
+    fecha_ingreso: document.getElementById('ineHospIngreso').value || null,
+    fecha_egreso: document.getElementById('ineHospEgreso').value || null,
+    fecha: document.getElementById('ineHospIngreso').value || new Date().toISOString().slice(0,10),
+    sexo: document.getElementById('ineHospSexo').value,
+    pueblo: document.getElementById('ineHospPueblo').value,
+    edad_anios: document.getElementById('ineHospEdad').value || null,
+    direccion: document.getElementById('ineHospDir').value,
+    municipio: document.getElementById('ineHospMuni').value,
+    diagnostico: document.getElementById('ineHospDiag').value,
+    tratamiento: document.getElementById('ineHospTrat').value,
+    condicion_egreso: document.getElementById('ineHospCond').value,
+    especialidad: document.getElementById('ineHospProc').value,
+    procedimiento: document.getElementById('ineHospProc').value,
+    igss: document.getElementById('ineHospIgss').value,
+    branch_id: HOSPITAL_BRANCH_ID
+  };
+  const res = await fetch(INE_API,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(payload)
+  });
+  const out = await res.json().catch(()=>({ok:false}));
+  if(!res.ok || !out.ok){
+    alert(out.error || 'Error guardando INE');
+    return;
+  }
+  clearForm();
+  alert('Registro Guardado');
+}
+function exportHosp(){
+  const from = document.getElementById('ineHospFrom').value;
+  const to = document.getElementById('ineHospTo').value;
+  const params = new URLSearchParams({tipo:'hospitalizacion'});
+  if(from) params.set('from', from);
+  if(to) params.set('to', to);
+  window.open('api/ine_export?'+params.toString(), '_blank');
+}
+function clearForm(){
+  const form = document.getElementById('ineHospForm');
+  if(form) form.reset();
+}
+async function logout(){
+  try{ await fetch('api/logout',{credentials:'include'});}catch(e){}
+  location.href='login.html';
+}
+(async()=>{
+  if(await auth()){
+    await loadBranches();
+    document.getElementById('ineHospForm').addEventListener('submit', saveIne);
+    document.getElementById('ineHospClear').addEventListener('click', clearForm);
+    document.getElementById('btnHospExport').addEventListener('click', exportHosp);
+  }
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

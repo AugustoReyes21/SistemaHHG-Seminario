@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Enfermería</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body.auth {
+      background: radial-gradient(1200px 600px at 10% 10%, #0b1b2b 0%, #09121d 45%, #060b12 100%);
+      overflow: hidden;
+    }
+    .auth-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .auth-bg .grid {
+      position: absolute;
+      inset: -20% -20%;
+      background-image:
+        linear-gradient(rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(800px) rotateX(55deg);
+      animation: gridFloat 12s ease-in-out infinite;
+      opacity: 0.6;
+    }
+    .auth-bg .hg-mark {
+      position: absolute;
+      top: 86px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 74px;
+      letter-spacing: 0.08em;
+      color: rgba(226, 232, 240, 0.75);
+      text-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .auth-bg .hg-mark span {
+      display: inline-block;
+      opacity: 0;
+      animation: hgFloat 6s ease-in-out infinite;
+    }
+    .auth-bg .hg-mark .h-left {
+      animation: hgInLeft 1.2s ease-out forwards, hgFloat 6s ease-in-out 1.2s infinite;
+    }
+    .auth-bg .hg-mark .h-mid {
+      animation: hgInDown 1.2s ease-out forwards, hgFloat 6s ease-in-out 1.2s infinite;
+    }
+    .auth-bg .hg-mark .g {
+      animation: hgInRight 1.2s ease-out forwards, hgFloat 6s ease-in-out 1.2s infinite;
+    }
+    .auth-bg .pulse-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      border: 2px solid rgba(14, 165, 233, 0.25);
+      animation: ringPulse 5s ease-out infinite;
+    }
+    .auth-bg .pulse {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 999px;
+      top: 18%;
+      left: 8%;
+      opacity: 0.6;
+    }
+    .auth-bg .ecg {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      bottom: 18%;
+      height: 80px;
+      opacity: 0.5;
+    }
+    .auth-bg .ecg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 0%, rgba(34, 211, 238, 0.8) 50%, transparent 100%);
+      mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' fill='none' stroke='white' stroke-width='8'><path d='M0 60 H140 L170 20 L210 100 L250 60 H380 L420 60 L450 20 L490 100 L530 60 H700 L740 60 L770 20 L810 100 L850 60 H1200'/></svg>");
+      mask-size: 1200px 120px;
+      mask-repeat: repeat-x;
+      animation: ecgScan 6s linear infinite;
+    }
+    .auth-bg .glow {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 999px;
+      filter: blur(40px);
+      opacity: 0.55;
+      animation: glowPulse 8s ease-in-out infinite;
+    }
+    .auth-bg .glow.one {
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.7), transparent 70%);
+      top: -80px;
+      left: -60px;
+    }
+    .auth-bg .glow.two {
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.6), transparent 70%);
+      bottom: -120px;
+      right: -80px;
+      animation-delay: 1.8s;
+    }
+    .auth-shell {
+      position: relative;
+      z-index: 1;
+      animation: shellIn 0.9s ease-out both;
+    }
+    body.auth.login-exit .auth-shell {
+      animation: shellOut 0.7s ease-in both;
+    }
+    body.auth.login-exit .auth-bg {
+      animation: bgOut 0.7s ease-in both;
+    }
+    .login-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(600px 300px at 50% 30%, rgba(56,189,248,0.2), transparent 60%),
+                  rgba(2,6,23,0.55);
+      z-index: 3;
+      backdrop-filter: blur(6px);
+    }
+    body.auth.login-exit .login-overlay {
+      display: flex;
+      animation: overlayIn 0.5s ease-out both;
+    }
+    .login-loader {
+      width: 110px;
+      height: 110px;
+      border-radius: 999px;
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      border-top-color: rgba(56, 189, 248, 0.9);
+      animation: spin 1.1s linear infinite;
+      box-shadow: 0 0 30px rgba(56, 189, 248, 0.3);
+      position: relative;
+    }
+    .login-loader::after {
+      content: '';
+      position: absolute;
+      inset: 12px;
+      border-radius: 999px;
+      border: 2px dashed rgba(148, 163, 184, 0.6);
+      animation: spin 2.2s linear infinite reverse;
+    }
+    .login-text {
+      margin-top: 14px;
+      color: #e2e8f0;
+      font-size: 14px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    .auth-card {
+      backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
+      animation: cardRise 0.9s ease-out both;
+    }
+    .auth-hero .brand h1,
+    .auth-hero .brand p,
+    .auth-card h2,
+    .auth-card p,
+    .auth-card label,
+    .auth-card a {
+      color: #e2e8f0;
+    }
+    .choice-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-top: 16px;
+    }
+    .choice-btn {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      text-align: left;
+      padding: 16px;
+      border-radius: 14px;
+      border: 1px solid rgba(148, 163, 184, 0.25);
+      background: linear-gradient(135deg, rgba(30, 41, 59, 0.85), rgba(15, 23, 42, 0.92));
+      color: #e2e8f0;
+      cursor: pointer;
+      transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+    }
+    .choice-btn strong {
+      font-size: 16px;
+      letter-spacing: 0.02em;
+    }
+    .choice-btn span {
+      font-size: 13px;
+      color: rgba(226, 232, 240, 0.78);
+    }
+    .choice-btn:hover {
+      transform: translateY(-2px);
+      border-color: rgba(56, 189, 248, 0.6);
+      box-shadow: 0 12px 26px rgba(15, 23, 42, 0.45);
+    }
+    @keyframes gridFloat {
+      0% { transform: perspective(800px) rotateX(55deg) translateY(0); }
+      50% { transform: perspective(800px) rotateX(55deg) translateY(18px); }
+      100% { transform: perspective(800px) rotateX(55deg) translateY(0); }
+    }
+    @keyframes glowPulse {
+      0% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.08); opacity: 0.75; }
+      100% { transform: scale(1); opacity: 0.5; }
+    }
+    @keyframes hgInLeft {
+      0% { transform: translateX(-120px); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes hgInRight {
+      0% { transform: translateX(120px); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes hgInDown {
+      0% { transform: translateY(-120px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes hgFloat {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+      100% { transform: translateY(0); }
+    }
+    @keyframes ringPulse {
+      0% { transform: scale(0.82); opacity: 0.15; }
+      40% { transform: scale(1); opacity: 0.3; }
+      100% { transform: scale(1.2); opacity: 0; }
+    }
+    @keyframes ecgScan {
+      0% { transform: translateX(-30%); opacity: 0.2; }
+      40% { opacity: 0.65; }
+      100% { transform: translateX(30%); opacity: 0.2; }
+    }
+    @keyframes shellIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardRise {
+      0% { opacity: 0; transform: translateY(18px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @keyframes shellOut {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-8px) scale(0.99); }
+    }
+    @keyframes bgOut {
+      0% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+    @keyframes overlayIn {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    @media (max-width: 900px) {
+      .auth-bg .grid { background-size: 48px 48px; }
+      .auth-bg .glow { width: 320px; height: 320px; }
+      .choice-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body class="auth">
+  <div class="auth-bg" aria-hidden="true">
+    <div class="grid"></div>
+    <div class="glow one"></div>
+    <div class="glow two"></div>
+    <div class="pulse">
+      <div class="pulse-ring"></div>
+    </div>
+    <div class="hg-mark" aria-hidden="true">
+      <span class="h-left">H</span>
+      <span class="h-mid">H</span>
+      <span class="g">G</span>
+    </div>
+    <div class="ecg"></div>
+  </div>
+  <div class="login-overlay" aria-hidden="true">
+    <div style="display:flex;flex-direction:column;align-items:center;">
+      <div class="login-loader"></div>
+      <div class="login-text">Ingresando...</div>
+    </div>
+  </div>
+  <main class="auth-shell">
+    <section class="auth-hero">
+      <div class="brand">
+        <img class="brand-logo" src="https://hospitalhilariogalindo.org/wp-content/uploads/2024/12/logo_mc.png" alt="Logo">
+        <div>
+          <h1>SistemaHHG</h1>
+          <p>Panel de Enfermería</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-card">
+      <h2>Selecciona el módulo</h2>
+      <p>Elige el área a la que deseas ingresar.</p>
+      <div class="choice-grid">
+        <button class="choice-btn" data-dest="ventas_emergencia.html" data-area="emergencia" type="button">
+          <strong>Emergencia</strong>
+          <span>Registro INE y flujo de pacientes.</span>
+        </button>
+        <button class="choice-btn" data-dest="hospitalizacion.html" data-area="hospitalizacion" type="button">
+          <strong>Hospitalización</strong>
+          <span>Admisiones, camas y cargos.</span>
+        </button>
+      </div>
+    </section>
+  </main>
+  <script>
+    async function ensureAuth() {
+      try {
+        const res = await fetch('api/auth_check', { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        if (!data || !data.ok) {
+          window.location.href = 'login.html';
+        }
+      } catch (_) {
+        window.location.href = 'login.html';
+      }
+    }
+
+    function navigateTo(dest) {
+      try { document.body.classList.add('login-exit'); } catch (_) {}
+      setTimeout(() => { window.location.href = dest; }, 650);
+    }
+
+    document.querySelectorAll('.choice-btn').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const dest = btn.getAttribute('data-dest');
+        const area = btn.getAttribute('data-area');
+        if (area) {
+          try { localStorage.setItem('hhg_nurse_area', area); } catch (_) {}
+        }
+        if (dest) navigateTo(dest);
+      });
+    });
+
+    ensureAuth();
+  </script>
+</body>
+</html>

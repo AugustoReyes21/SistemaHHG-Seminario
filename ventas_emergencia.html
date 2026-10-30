@@ -1,0 +1,2582 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Emergencia</title>
+  <style>
+    *{box-sizing:border-box;}
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#233;display:flex;min-height:100vh;}
+    body.modal-open{overflow:hidden;}
+    .sidebar{width:220px;background:#fff;border-right:1px solid #e5e7eb;padding:16px 12px;display:flex;flex-direction:column;gap:8px;}
+    .sidebar h3{margin:0 0 10px 0;color:#2b5876;}
+    .nav-link{color:#2b5876;text-decoration:none;padding:10px 12px;border-radius:8px;font-weight:600;display:block;}
+    .nav-link:hover,.nav-link.active{background:#e9eef7;}
+    .content{flex:1;display:flex;flex-direction:column;}
+    header{background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;padding:16px 24px;display:flex;align-items:center;justify-content:space-between;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    .container{padding:20px;display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+    .container.single-panel{grid-template-columns:minmax(0,980px);justify-content:center;}
+    .card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 16px rgba(0,0,0,0.07);}
+    h3{margin-top:0;color:#2b5876;}
+    input,select,textarea{width:100%;padding:8px;border:1px solid #ccd;border-radius:6px;font-size:15px;margin-bottom:10px;}
+    textarea{min-height:60px;resize:vertical;}
+    button.primary{background:#2b5876;color:#fff;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    button.secondary{background:#e5e8ef;color:#2b5876;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    button.danger{background:#c62828;color:#fff;border:none;padding:6px 10px;border-radius:6px;cursor:pointer;}
+    table{width:100%;border-collapse:collapse;font-size:14px;}
+    th,td{border-bottom:1px solid #eee;padding:6px;text-align:left;}
+    th{background:#f0f4f8;color:#333;}
+    .muted{color:#777;font-size:13px;}
+    .flex{display:flex;gap:18px;flex-wrap:wrap;}
+    .minor-row{gap:12px;}
+    .list{max-height:240px;overflow:auto;border:1px solid #eee;border-radius:8px;padding:6px;}
+    .client-entry{display:flex;justify-content:space-between;gap:10px;padding:8px;border-bottom:1px solid #f0f4f8;align-items:flex-start;border-radius:6px;}
+    .client-entry:last-child{border-bottom:none;}
+    .client-entry.editing{border:1px solid #2b5876;background:#f3f6ff;}
+    .client-entry strong{display:block;font-size:15px;}
+    .client-name-link{display:inline-flex;align-items:center;gap:6px;background:none;border:none;padding:0;color:#2b5876;font:inherit;font-weight:700;cursor:pointer;text-align:left;}
+    .client-name-link:hover{text-decoration:underline;}
+    .client-actions{display:flex;gap:6px;flex-shrink:0;}
+    .client-edit-btn{background:#2b5876;color:#fff;border:none;padding:4px 10px;border-radius:20px;font-size:12px;cursor:pointer;}
+    .form-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:8px;}
+    .tag{display:inline-block;padding:2px 8px;border-radius:20px;font-size:12px;background:#eef;color:#2b5876;margin-left:6px;}
+    .tag.ready-tag{background:#dff6e6;color:#1f6b3a;}
+    .chips{display:flex;flex-wrap:wrap;gap:6px;}
+    .btn-link{background:none;border:none;color:#2b5876;cursor:pointer;padding:0;font-size:14px;}
+    #admissionDetail{grid-column:1/-1;margin:0;}
+    #historyView{grid-template-columns:1fr;}
+    #historyCard{grid-column:1/-1;}
+    .receipt-list{display:flex;flex-wrap:wrap;gap:8px;}
+    .receipt-btn{background:none;border:none;color:#2b5876;cursor:pointer;padding:0;font-size:13px;text-decoration:underline;}
+    .two-cols{display:flex;gap:16px;flex-wrap:wrap;}
+    .two-cols>div{flex:1;min-width:260px;}
+    #admissionsTable tbody tr{cursor:pointer;}
+    #admissionsTable tbody tr:hover{background:#f8fbff;}
+    #admissionsTable tbody tr.is-selected{background:#e9f2ff;}
+    #admissionsTable tbody tr.is-ready{background:#f3fcf5;}
+    .search-row{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+    .search-row input{flex:1;min-width:200px;}
+    .room-status{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;}
+    .room-card{flex:1 1 150px;background:#f8fbff;border:1px solid #dfe7f5;border-radius:10px;padding:10px;min-width:150px;}
+    .room-card strong{display:block;color:#2b5876;margin-bottom:4px;}
+    .room-card span{display:block;font-size:13px;color:#466;}
+    .ine-section{margin-top:10px;}
+    .ine-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+    .ine-grid .full{grid-column:1/-1;}
+    .role-hint{display:none;margin-top:10px;padding:10px 12px;border-radius:8px;background:#f3f6ff;color:#35506a;font-size:13px;}
+    .vitals-section{margin-top:10px;}
+    .patient-context{margin-bottom:12px;padding:12px;border:1px solid #dfe7f5;border-radius:10px;background:#f8fbff;}
+    .patient-context-title{margin:0 0 8px;color:#2b5876;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.03em;}
+    .patient-context-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+    .vitals-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;}
+    .vitals-grid .full{grid-column:1/-1;}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);align-items:center;justify-content:center;z-index:9999;}
+    .modal .box{background:#fff;border-radius:10px;padding:18px;max-width:95%;width:340px;box-shadow:0 12px 30px rgba(0,0,0,0.25);}
+    .detail-modal{padding:24px 18px;overflow:auto;}
+    .detail-modal .detail-box{width:min(1120px,96vw);max-height:calc(100vh - 48px);overflow:auto;padding:0;background:transparent;box-shadow:none;}
+    .detail-header{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;}
+    .detail-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+    .summary-modal .box{width:min(820px,94vw);max-height:calc(100vh - 48px);overflow:auto;padding:20px;}
+    .summary-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:14px;}
+    .summary-card{background:#f8fbff;border:1px solid #dfe7f5;border-radius:10px;padding:14px;}
+    .summary-card h4{margin:0 0 10px;color:#2b5876;}
+    .summary-row{display:flex;flex-direction:column;gap:2px;padding:8px 0;border-bottom:1px solid #e7eef8;}
+    .summary-row:last-child{border-bottom:none;padding-bottom:0;}
+    .summary-label{font-size:12px;color:#5b6f84;text-transform:uppercase;letter-spacing:.03em;}
+    .summary-value{font-size:14px;color:#233;white-space:pre-wrap;word-break:break-word;}
+    .silent-toast-host{position:fixed;top:18px;right:18px;display:flex;flex-direction:column;gap:10px;z-index:12000;pointer-events:none;}
+    .silent-toast{min-width:300px;max-width:380px;padding:14px 16px;border-radius:12px;background:rgba(15,23,42,0.96);color:#fff;box-shadow:0 18px 34px rgba(15,23,42,0.32);border-left:4px solid #2fa866;opacity:0;transform:translateY(-8px);animation:toastIn .22s ease forwards;}
+    .silent-toast strong{display:block;margin-bottom:4px;font-size:14px;}
+    .silent-toast.fade-out{animation:toastOut .22s ease forwards;}
+    #transferModal .box{width:860px;max-width:95vw;}
+    #transferModal form{display:grid;grid-template-columns:minmax(220px,1fr) minmax(320px,2fr);gap:14px;align-items:start;}
+    #transferModal .transfer-left,#transferModal .transfer-right{display:flex;flex-direction:column;gap:8px;}
+    #transferModal .room-status{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(170px,1fr);gap:10px;overflow-x:auto;padding-bottom:4px;margin-top:0;}
+    #transferModal .room-card{min-width:170px;}
+    #transferModal .transfer-actions{grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;margin-top:4px;}
+    @keyframes toastIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+    @keyframes toastOut{from{opacity:1;transform:translateY(0);}to{opacity:0;transform:translateY(-8px);}}
+    @media(max-width:900px){
+      .detail-modal{padding:12px;}
+      .detail-header{flex-direction:column;}
+      .detail-actions{width:100%;justify-content:flex-start;}
+      #transferModal form{grid-template-columns:1fr;}
+      #transferModal .room-status{grid-auto-flow:row;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));overflow-x:visible;}
+      .ine-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body class="app app-emergencia app-bg-photo hide-legacy-actions">
+  <aside class="sidebar">
+    <h3>Emergencia</h3>
+    <a class="nav-link" href="#pacientes" id="navPacientes">Pacientes</a>
+    <a class="nav-link" href="#historial" id="navHistory">Historial pacientes</a>
+  </aside>
+  <div class="content">
+    <header class="app-header">
+      <h1>Emergencia</h1>
+      <div>
+        
+        
+      </div>
+    </header>
+    <div class="container" id="patientsView">
+    <div class="card">
+      <h3>Pacientes</h3>
+      <div class="search-row">
+        <input type="search" id="clientSearch" placeholder="Buscar paciente por DPI o DPI del acompañante">
+        <button type="button" class="secondary" id="clientSearchBtn">Buscar</button>
+        <button type="button" class="secondary" id="clientSearchClear">Limpiar</button>
+      </div>
+      <div class="muted" id="clientSearchHint">Cargando pacientes pendientes de admisión...</div>
+      <div id="clientsList" class="list"></div>
+      <div id="patientRoleHint" class="role-hint"></div>
+      <form id="clientForm">
+        <input name="nombre" placeholder="Nombre completo" required>
+        <input name="documento" placeholder="DPI del paciente">
+        <input name="telefono" placeholder="Teléfono">
+        <input name="direccion" placeholder="Dirección">
+        <div class="flex minor-row">
+          <div style="flex:1">
+            <label>Fecha de nacimiento</label>
+            <input type="date" name="fecha_nacimiento" id="clientDob">
+          </div>
+          <div style="flex:1">
+            <label>¿Es menor de edad?</label>
+            <select name="es_menor" id="clientIsMinor">
+              <option value="0">No</option>
+              <option value="1">Sí</option>
+            </select>
+          </div>
+        </div>
+        <div id="guardianFields">
+          <input name="encargado_nombre" id="guardianName" placeholder="Nombre del acompañante">
+          <input name="encargado_dpi" id="guardianDpi" placeholder="DPI del acompañante">
+        </div>
+        <div class="vitals-section" id="vitalsSection">
+          <h4 style="margin:10px 0 6px;">Signos vitales</h4>
+          <div class="patient-context" id="vitalPatientContext" style="display:none;">
+            <div class="patient-context-title">Paciente asignado</div>
+            <div class="patient-context-grid">
+              <div>
+                <label>Paciente</label>
+                <input id="vitalPatientName" readonly placeholder="Seleccione un paciente">
+              </div>
+              <div>
+                <label>DPI del paciente</label>
+                <input id="vitalPatientDpi" readonly placeholder="Seleccione un paciente">
+              </div>
+            </div>
+          </div>
+          <div class="vitals-grid">
+            <div>
+              <label>Peso</label>
+              <input name="peso" id="vitalPeso" placeholder="kg">
+            </div>
+            <div>
+              <label>Talla</label>
+              <input name="talla" id="vitalTalla" placeholder="cm">
+            </div>
+            <div>
+              <label>Temperatura</label>
+              <input name="temp" id="vitalTemp" placeholder="°C">
+            </div>
+            <div>
+              <label>Presión</label>
+              <input name="presion" id="vitalPresion" placeholder="120/80">
+            </div>
+            <div>
+              <label>F.C.</label>
+              <input name="fc" id="vitalFc" placeholder="lpm">
+            </div>
+            <div>
+              <label>F.R.</label>
+              <input name="fr" id="vitalFr" placeholder="rpm">
+            </div>
+            <div>
+              <label>Saturación</label>
+              <input name="saturacion" id="vitalSaturacion" placeholder="%">
+            </div>
+            <div class="full">
+              <label>Otros</label>
+              <input name="otros" id="vitalOtros" placeholder="Observaciones">
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="primary" type="submit" id="clientSubmitBtn">Guardar paciente</button>
+          <button type="button" class="secondary" id="clientCancelEdit" style="display:none;">Cancelar edición</button>
+        </div>
+        <div class="muted" id="clientEditHint" style="display:none;"></div>
+        <div class="ine-section">
+          <div class="ine-grid">
+            <div>
+              <label>Fecha</label>
+              <input type="date" id="ineEFecha">
+            </div>
+            <div>
+              <label>Derecho a IGSS</label>
+              <select id="ineEIgss">
+                <option value="No">No</option>
+                <option value="Si">Si</option>
+              </select>
+            </div>
+            <div>
+              <label>Día de atención</label>
+              <input type="text" id="ineEDiaConsulta" placeholder="Ej: Lunes">
+            </div>
+            <div>
+              <label>Sexo</label>
+              <select id="ineESexo">
+                <option value="">--</option>
+                <option>Mujer</option>
+                <option>Hombre</option>
+              </select>
+            </div>
+            <div>
+              <label>Grupo étnico / pertenencia</label>
+              <input id="ineEPueblo" placeholder="Mestizo/Ladino...">
+            </div>
+            <div>
+              <label>Edad (años)</label>
+              <input type="number" id="ineEEdadA" min="0">
+            </div>
+            <div>
+              <label>Edad (meses)</label>
+              <input type="number" id="ineEEdadM" min="0" max="11">
+            </div>
+            <div>
+              <label>Dirección exacta</label>
+              <input id="ineEDir" placeholder="Aldea, zona, referencia">
+            </div>
+            <div>
+              <label>Municipio / Departamento</label>
+              <input id="ineEMuni" placeholder="Municipio / Depto">
+            </div>
+            <div>
+              <label>Tipo de consulta</label>
+              <input id="ineEConsulta" placeholder="Primera consulta">
+            </div>
+            <div>
+              <label>Control materno</label>
+              <input id="ineEControl" placeholder="">
+            </div>
+            <div class="full">
+              <label>Diagnóstico</label>
+              <textarea id="ineEDiag" rows="2"></textarea>
+            </div>
+            <div>
+              <label>Condición</label>
+              <input id="ineECie">
+            </div>
+            <div>
+              <label>Tratamiento recibido</label>
+              <input id="ineETrat">
+            </div>
+            <div>
+              <label>Traslado</label>
+              <input id="ineETraslado" placeholder="Hospital o destino">
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="primary" type="button" id="clientSubmitBtn2">Registrar datos</button>
+        </div>
+      </form>
+    </div>
+    <div class="card" id="admissionPanel">
+      <h3>Admisión emergencia</h3>
+      <form id="admissionForm">
+        <label>Paciente</label>
+        <select name="client_id" id="clientSelect" required></select>
+        <label>Notas</label>
+        <textarea name="notes" placeholder="Motivo / comentario"></textarea>
+        <div class="muted">Sucursal asignada: <span id="branchLabel">--</span></div>
+        <button class="primary" type="submit">Crear admisión</button>
+      </form>
+      <hr style="margin:16px 0">
+      <h3>Admisiones abiertas</h3>
+      <table id="admissionsTable">
+        <thead>
+          <tr>
+            <th>#</th><th>Paciente</th><th>Ingresó</th><th>Cargos</th><th>Abonos</th><th>Saldo</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="modal detail-modal" id="admissionDetailModal" aria-hidden="true">
+      <div class="box detail-box">
+        <div class="card" id="admissionDetail">
+          <div class="detail-header">
+            <div>
+              <h3 id="detailTitle"></h3>
+              <div class="muted" id="detailSubtitle"></div>
+            </div>
+            <div class="detail-actions">
+              <button type="button" class="secondary" id="refreshDetailBtn">Actualizar</button>
+              <button type="button" class="primary" id="chargeBtn">Cobrar</button>
+              <button type="button" class="secondary" id="transferBtn">Trasladar</button>
+              <button type="button" class="primary" id="dischargeBtn">Dar de alta</button>
+              <button type="button" class="secondary" id="closeAdmissionDetailBtn">Cerrar</button>
+            </div>
+          </div>
+          <div class="chips">
+            <span class="tag" id="detailStatus"></span>
+            <span class="tag">Cargos: <span id="detailTotalCharges">Q0.00</span></span>
+            <span class="tag">Abonos: <span id="detailTotalPayments">Q0.00</span></span>
+            <span class="tag">Saldo: <span id="detailBalance">Q0.00</span></span>
+            <span class="tag" id="detailDiscountTag" style="display:none;">Descuento: Q0.00</span>
+            <span class="tag ready-tag" id="detailReadyTag" style="display:none;">Cuenta pagada · listo para alta</span>
+          </div>
+          <div class="two-cols" style="margin-top:10px;">
+            <div>
+              <h4>Cargos</h4>
+              <table>
+                <thead><tr><th>Descripción</th><th>Cant</th><th>P.Unit</th><th>Total</th><th>Acciones</th></tr></thead>
+                <tbody id="chargesBody"></tbody>
+              </table>
+            </div>
+            <div>
+              <h4>Cobros</h4>
+              <table>
+                <thead><tr><th>Monto</th><th>Método</th><th>Nota</th><th>Fecha</th></tr></thead>
+                <tbody id="paymentsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="two-cols" style="margin-top:16px;">
+            <div>
+              <h4>Cargar producto / servicio</h4>
+              <form id="chargeForm">
+                <label>Tipo</label>
+                <select name="charge_product_type" id="chargeProductType">
+                  <option value="medicamento">Medicamento</option>
+                  <option value="combo">Combo</option>
+                  <option value="servicio">Servicio</option>
+                </select>
+                <label>Producto</label>
+                <select name="product_id" id="productSelect">
+                  <option value="">-- Seleccione medicamento --</option>
+                </select>
+                <label>Presentación</label>
+                <select name="presentation_type" id="chargePresentation" disabled>
+                  <option value="unidad">Unidad</option>
+                </select>
+                <input name="description" placeholder="Descripción (si aplica)">
+                <input name="quantity" type="number" min="0.01" step="0.01" value="1" placeholder="Cantidad">
+                <input name="unit_price" type="number" min="0" step="0.01" placeholder="Precio unitario">
+                <button class="primary" type="submit">Agregar cargo</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+    <div class="container" id="historyView" style="display:none;">
+      <div class="card" id="historyCard">
+        <h3>Historial de pacientes</h3>
+        <div class="search-row">
+          <input type="search" id="historySearch" placeholder="Buscar por DPI o DPI del acompañante">
+          <button type="button" class="secondary" id="historySearchBtn">Buscar</button>
+          <button type="button" class="secondary" id="historySearchClear">Limpiar</button>
+        </div>
+        <div class="muted" id="historyHint">Mostrando últimos cierres.</div>
+        <table id="historyTable">
+          <thead>
+            <tr>
+              <th>Paciente</th>
+              <th>DPI</th>
+              <th>Adm</th>
+              <th>Ingreso</th>
+              <th>Alta</th>
+              <th>Total</th>
+              <th>Descuento</th>
+              <th>Pagado</th>
+              <th>Comprobantes</th>
+            </tr>
+          </thead>
+          <tbody id="historyBody"></tbody>
+        </table>
+      </div>
+    </div>
+</div>
+
+<div class="modal" id="chargeModal" aria-hidden="true">
+  <div class="box">
+    <h3>Generar documento de cobro</h3>
+    <form id="chargeModalForm">
+      <p class="muted">Se generará un documento con el monto pendiente para cobrar en caja.</p>
+      <label>Facturar con</label>
+      <select id="chargeCustomerType" style="margin-bottom:10px;">
+        <option value="cui">CUI</option>
+        <option value="nit">NIT</option>
+      </select>
+      <label>Número de documento</label>
+      <input id="chargeCustomerDocument" placeholder="CUI del paciente" autocomplete="off">
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:12px;">
+        <button type="button" class="secondary" id="chargeCancelBtn">Cancelar</button>
+        <button type="submit" class="primary">Generar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal" id="transferModal" aria-hidden="true">
+  <div class="box">
+    <h3>Trasladar a hospitalización</h3>
+    <form id="transferForm">
+      <div class="transfer-left">
+        <label>Habitación</label>
+        <select name="room_type" id="transferRoomType" required></select>
+        <label>Nota</label>
+        <input name="note" placeholder="Observaciones">
+      </div>
+      <div class="transfer-right">
+        <div class="muted" id="transferRoomHint"></div>
+        <div id="transferRoomStatus" class="room-status"></div>
+      </div>
+      <div class="transfer-actions">
+        <button type="button" class="secondary" id="transferCancelBtn">Cancelar</button>
+        <button type="submit" class="primary">Trasladar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="modal summary-modal" id="clientSummaryModal" aria-hidden="true">
+  <div class="box">
+    <div class="detail-header" style="margin-bottom:14px;">
+      <div>
+        <h3 id="clientSummaryTitle" style="margin:0;">Ficha del paciente</h3>
+        <div class="muted" id="clientSummarySubtitle"></div>
+      </div>
+      <div class="detail-actions">
+        <button type="button" class="secondary" id="closeClientSummaryBtn">Cerrar</button>
+      </div>
+    </div>
+    <div class="summary-grid" id="clientSummaryBody"></div>
+  </div>
+</div>
+
+<script>
+const API = 'api/hospital';
+let USER_ROLE = '';
+let CLIENTS = [];
+let ADMISSIONS = [];
+let CURRENT_ADMISSION = null;
+let BRANCHES = [];
+let EMERGENCY_BRANCH_ID = null;
+let HOSPITAL_BRANCH_ID = null;
+let PRODUCTS = [];
+let ROOM_STATUS = {};
+let CLIENT_SEARCH_TERM = '';
+let CLIENT_EDITING_ID = null;
+let CLIENT_EDITING_DATA = null;
+let CURRENT_ADMISSION_DATA = null;
+let ADMISSION_SESSION_TIMER = null;
+const ADMISSION_SESSION_HEARTBEAT_MS = 30000;
+const SILENT_SYNC_MS = 12000;
+const DISCHARGE_READY_RECENT_MS = 15 * 60 * 1000;
+const DISCHARGE_READY_STORAGE_KEY = 'hhg_discharge_ready_seen_emergencia';
+let SILENT_SYNC_TIMER = null;
+let SILENT_SYNC_RUNNING = false;
+let READY_NOTICE_CACHE = new Set();
+let HOSPITAL_EVENTS_SOURCE = null;
+let HOSPITAL_EVENTS_RETRY_TIMER = null;
+let REALTIME_SYNC_TIMER = null;
+let CAN_MANAGE_PATIENT_DATA = true;
+let CAN_EDIT_VITAL_SIGNS = false;
+let CAN_MANAGE_BILLING = true;
+
+function normalizeRole(value){
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'');
+  const map = {
+    emergencia: 'cashiee',
+    hospital: 'cashierh',
+    administrador: 'admin',
+    medicos: 'medico'
+  };
+  return map[raw] || raw;
+}
+
+function canManagePatientDataRole(role){
+  return ['admin','administrador','cashiee','cashierh','hospital','superadmin','medico','direccionmedica','consultorio2','consultorio3'].includes(role);
+}
+
+function canEditVitalSignsRole(role){
+  return ['admin','administrador','superadmin','medico','direccionmedica','consultorio2','consultorio3'].includes(role);
+}
+
+function canManageBillingRole(role){
+  return ['admin','administrador','cashiee','cashierh','hospital','enfermeria','superadmin'].includes(role);
+}
+
+function isDoctorRole(){
+  return USER_ROLE === 'medico';
+}
+
+function isNurseRole(){
+  return normalizeRole(USER_ROLE) === 'enfermeria';
+}
+
+function syncClientFormVisibility(){
+  const clientForm = document.getElementById('clientForm');
+  if(!clientForm) return;
+  const visible = CAN_MANAGE_PATIENT_DATA;
+  clientForm.style.display = visible ? '' : 'none';
+  syncVitalPatientContext(CLIENT_EDITING_DATA);
+}
+
+function formatDateTime(value){
+  if(!value) return '--';
+  const dt = new Date(value);
+  if(Number.isNaN(dt.getTime())) return String(value);
+  try{
+    return new Intl.DateTimeFormat('es-GT',{
+      dateStyle:'short',
+      timeStyle:'short'
+    }).format(dt);
+  }catch(_){
+    return dt.toLocaleString('es-GT');
+  }
+}
+
+function getVitalSignsPayload(){
+  return {
+    peso: document.getElementById('vitalPeso')?.value || null,
+    talla: document.getElementById('vitalTalla')?.value || null,
+    temp: document.getElementById('vitalTemp')?.value || null,
+    presion: document.getElementById('vitalPresion')?.value || null,
+    fc: document.getElementById('vitalFc')?.value || null,
+    fr: document.getElementById('vitalFr')?.value || null,
+    saturacion: document.getElementById('vitalSaturacion')?.value || null,
+    otros: document.getElementById('vitalOtros')?.value || null
+  };
+}
+
+function fillVitalSigns(signos){
+  const values = signos && typeof signos === 'object' ? signos : {};
+  const map = {
+    vitalPeso: values.peso || '',
+    vitalTalla: values.talla || '',
+    vitalTemp: values.temp || '',
+    vitalPresion: values.presion || '',
+    vitalFc: values.fc || '',
+    vitalFr: values.fr || '',
+    vitalSaturacion: values.saturacion || '',
+    vitalOtros: values.otros || ''
+  };
+  Object.entries(map).forEach(([id,val])=>{
+    const el = document.getElementById(id);
+    if(el) el.value = val;
+  });
+}
+
+function syncVitalPatientContext(client = null){
+  const info = client || CLIENT_EDITING_DATA;
+  const wrap = document.getElementById('vitalPatientContext');
+  const nameInput = document.getElementById('vitalPatientName');
+  const dpiInput = document.getElementById('vitalPatientDpi');
+  if(!wrap || !nameInput || !dpiInput) return;
+  const hasInfo = Boolean(info && (info.nombre || info.documento || info.id));
+  const showContext = CAN_EDIT_VITAL_SIGNS && (isDoctorRole() || hasInfo);
+  wrap.style.display = showContext ? '' : 'none';
+  nameInput.value = hasInfo ? (info.nombre || '') : '';
+  dpiInput.value = hasInfo ? (info.documento || '') : '';
+  nameInput.placeholder = isDoctorRole() ? 'Busque o ingrese un paciente' : 'Seleccione un paciente';
+  dpiInput.placeholder = isDoctorRole() ? 'DPI del paciente' : 'Seleccione un paciente';
+}
+
+function escapeHtml(value){
+  return String(value ?? '')
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#39;');
+}
+
+function formatDateOnly(value){
+  if(!value) return '--';
+  const raw = String(value).substring(0,10);
+  const dt = new Date(`${raw}T00:00:00`);
+  if(Number.isNaN(dt.getTime())) return raw;
+  try{
+    return new Intl.DateTimeFormat('es-GT',{dateStyle:'medium'}).format(dt);
+  }catch(_){
+    return dt.toLocaleDateString('es-GT');
+  }
+}
+
+function renderSummaryRows(rows){
+  const filtered = rows.filter(([,value])=>value != null && String(value).trim() !== '');
+  if(!filtered.length){
+    return '<div class="muted">Sin datos registrados.</div>';
+  }
+  return filtered.map(([label,value])=>`
+    <div class="summary-row">
+      <span class="summary-label">${escapeHtml(label)}</span>
+      <span class="summary-value">${escapeHtml(value)}</span>
+    </div>
+  `).join('');
+}
+
+function openClientSummary(clientId){
+  const id = Number(clientId || 0);
+  const client = CLIENTS.find(item=>Number(item.id) === id);
+  if(!client) return;
+  const signs = client.signos_vitales && typeof client.signos_vitales === 'object' ? client.signos_vitales : {};
+  const ine = client.latest_ine && typeof client.latest_ine === 'object' ? client.latest_ine : null;
+  const title = document.getElementById('clientSummaryTitle');
+  const subtitle = document.getElementById('clientSummarySubtitle');
+  const body = document.getElementById('clientSummaryBody');
+  if(title) title.textContent = client.nombre || 'Ficha del paciente';
+  if(subtitle){
+    const parts = [
+      client.documento ? `DPI: ${client.documento}` : 'DPI: S/D',
+      client.telefono ? `Tel: ${client.telefono}` : '',
+      ine?.tipo ? `Área: ${ine.tipo}` : ''
+    ].filter(Boolean);
+    subtitle.textContent = parts.join(' · ');
+  }
+  if(body){
+    const ageText = client.fecha_nacimiento ? `${calcAge(client.fecha_nacimiento) || '--'} años` : '';
+    const reportedAge = ine ? `${ine.edad_anios ?? ''}${ine.edad_anios != null ? ' años ' : ''}${ine.edad_meses != null ? `${ine.edad_meses} meses` : ''}`.trim() : '';
+    body.innerHTML = `
+      <div class="summary-card">
+        <h4>Datos del paciente</h4>
+        ${renderSummaryRows([
+          ['Nombre', client.nombre || ''],
+          ['DPI', client.documento || ''],
+          ['Teléfono', client.telefono || ''],
+          ['Dirección', client.direccion || ''],
+          ['Fecha de nacimiento', client.fecha_nacimiento ? formatDateOnly(client.fecha_nacimiento) : ''],
+          ['Edad', ageText],
+          ['Menor de edad', Number(client.es_menor) ? 'Sí' : 'No'],
+          ['Encargado', client.encargado_nombre || ''],
+          ['DPI encargado', client.encargado_dpi || ''],
+          ['Registrado', client.created_at ? formatDateTime(client.created_at) : '']
+        ])}
+      </div>
+      <div class="summary-card">
+        <h4>Signos vitales</h4>
+        ${renderSummaryRows([
+          ['Peso', signs.peso || ''],
+          ['Talla', signs.talla || ''],
+          ['Temperatura', signs.temp || ''],
+          ['Presión', signs.presion || ''],
+          ['Frecuencia cardiaca', signs.fc || ''],
+          ['Frecuencia respiratoria', signs.fr || ''],
+          ['Saturación', signs.saturacion || ''],
+          ['Observaciones', signs.otros || '']
+        ])}
+      </div>
+      <div class="summary-card" style="grid-column:1/-1;">
+        <h4>Último registro clínico</h4>
+        ${renderSummaryRows([
+          ['Fecha', ine?.fecha ? formatDateOnly(ine.fecha) : ''],
+          ['Día de atención', ine?.dia_consulta || ''],
+          ['IGSS', ine?.igss || ''],
+          ['Sexo', ine?.sexo || ''],
+          ['Pueblo', ine?.pueblo || ''],
+          ['Edad reportada', reportedAge],
+          ['Dirección INE', ine?.direccion || ''],
+          ['Municipio', ine?.municipio || ''],
+          ['Tipo de consulta', ine?.consulta || ''],
+          ['Control materno', ine?.control_materno || ''],
+          ['Diagnóstico', ine?.diagnostico || ''],
+          ['CIE / condición', ine?.cie || ''],
+          ['Tratamiento', ine?.tratamiento || ''],
+          ['Traslado', ine?.traslado || ''],
+          ['Fecha de ingreso', ine?.fecha_ingreso ? formatDateOnly(ine.fecha_ingreso) : ''],
+          ['Fecha de egreso', ine?.fecha_egreso ? formatDateOnly(ine.fecha_egreso) : ''],
+          ['Creado', ine?.created_at ? formatDateTime(ine.created_at) : '']
+        ])}
+      </div>
+    `;
+  }
+  setModalOpen('clientSummaryModal', true);
+  syncModalBodyState();
+}
+
+function closeClientSummary(){
+  setModalOpen('clientSummaryModal', false);
+  syncModalBodyState();
+}
+
+function isModalOpen(id){
+  const modal = document.getElementById(id);
+  return !!modal && modal.style.display === 'flex';
+}
+
+function setModalOpen(id, open){
+  const modal = document.getElementById(id);
+  if(!modal) return;
+  modal.style.display = open ? 'flex' : 'none';
+  modal.setAttribute('aria-hidden', open ? 'false' : 'true');
+}
+
+function syncModalBodyState(){
+  const hasOpenModal = ['admissionDetailModal', 'chargeModal', 'transferModal', 'clientSummaryModal'].some(isModalOpen);
+  document.body.classList.toggle('modal-open', hasOpenModal);
+}
+
+function updateAdmissionSelection(){
+  document.querySelectorAll('#admissionsTable tbody tr').forEach(row=>{
+    const isSelected = CURRENT_ADMISSION != null && Number(row.dataset.admissionId) === Number(CURRENT_ADMISSION);
+    row.classList.toggle('is-selected', !!isSelected);
+  });
+}
+
+function renderAdmissionDetailLoading(id){
+  document.getElementById('detailTitle').innerText = `Adm. #${id}`;
+  document.getElementById('detailSubtitle').innerText = 'Cargando información...';
+  document.getElementById('detailStatus').innerText = 'Cargando';
+  document.getElementById('detailTotalCharges').innerText = money(0);
+  document.getElementById('detailTotalPayments').innerText = money(0);
+  document.getElementById('detailBalance').innerText = money(0);
+  const discountTag = document.getElementById('detailDiscountTag');
+  if(discountTag) discountTag.style.display = 'none';
+  const chargesBody = document.getElementById('chargesBody');
+  const paymentsBody = document.getElementById('paymentsBody');
+  if(chargesBody) chargesBody.innerHTML = '<tr><td colspan="5" class="muted">Cargando...</td></tr>';
+  if(paymentsBody) paymentsBody.innerHTML = '<tr><td colspan="4" class="muted">Cargando...</td></tr>';
+  ['chargeBtn', 'dischargeBtn', 'transferBtn'].forEach(btnId=>{
+    const btn = document.getElementById(btnId);
+    if(btn) btn.disabled = true;
+  });
+}
+
+function openAdmissionDetailModal(){
+  setModalOpen('admissionDetailModal', true);
+  syncModalBodyState();
+}
+
+async function closeAdmissionDetailModal(options = {}){
+  const { clearSelection = true } = options;
+  const releaseLock = options.releaseLock !== false;
+  const admissionIdToRelease = Number(CURRENT_ADMISSION || 0);
+  stopAdmissionSessionHeartbeat();
+  closeChargeModal();
+  closeTransferModal();
+  setModalOpen('admissionDetailModal', false);
+  if(clearSelection){
+    CURRENT_ADMISSION = null;
+    CURRENT_ADMISSION_DATA = null;
+  }
+  const chargeForm = document.getElementById('chargeForm');
+  if(chargeForm) chargeForm.reset();
+  resetChargePresentationOptions();
+  syncChargeProductPricing({ fromProductChange: true });
+  updateAdmissionSelection();
+  syncModalBodyState();
+  if(releaseLock && admissionIdToRelease){
+    await releaseAdmissionSession(admissionIdToRelease, { stopHeartbeat: false });
+  }
+}
+
+function bindModalBackdrop(modalId, onClose){
+  const modal = document.getElementById(modalId);
+  if(!modal) return;
+  modal.addEventListener('click', e=>{
+    if(e.target === modal){
+      onClose();
+    }
+  });
+}
+
+function stopAdmissionSessionHeartbeat(){
+  if(ADMISSION_SESSION_TIMER){
+    clearInterval(ADMISSION_SESSION_TIMER);
+    ADMISSION_SESSION_TIMER = null;
+  }
+}
+
+function startAdmissionSessionHeartbeat(){
+  stopAdmissionSessionHeartbeat();
+  ADMISSION_SESSION_TIMER = window.setInterval(()=>{
+    keepAdmissionSession({ notifyOnConflict: true }).catch(()=>{});
+  }, ADMISSION_SESSION_HEARTBEAT_MS);
+}
+
+async function releaseAdmissionSession(admissionId, options = {}){
+  const resolvedAdmissionId = Number(admissionId || 0);
+  if(options.stopHeartbeat !== false){
+    stopAdmissionSessionHeartbeat();
+  }
+  if(!resolvedAdmissionId) return;
+  try{
+    await fetch(`${API}?action=close_admission_session`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify({ admission_id: resolvedAdmissionId })
+    });
+  }catch(_){}
+}
+
+function releaseAdmissionSessionOnUnload(){
+  const resolvedAdmissionId = Number(CURRENT_ADMISSION || 0);
+  if(!resolvedAdmissionId) return;
+  try{
+    if(navigator.sendBeacon){
+      navigator.sendBeacon(`${API}?action=close_admission_session&admission_id=${encodeURIComponent(resolvedAdmissionId)}`, '');
+    }
+  }catch(_){}
+}
+
+async function acquireAdmissionSession(admissionId, options = {}){
+  const resolvedAdmissionId = Number(admissionId || 0);
+  if(!resolvedAdmissionId) return false;
+  try{
+    const res = await fetch(`${API}?action=open_admission_session`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify({ admission_id: resolvedAdmissionId })
+    });
+    const out = await res.json().catch(()=>({ ok:false }));
+    if(res.ok && out.ok){
+      return true;
+    }
+    if(options.showError !== false){
+      alert(out.error || 'No se pudo abrir la admisión');
+    }
+    return false;
+  }catch(_){
+    if(options.showError !== false){
+      alert('No se pudo abrir la admisión');
+    }
+    return false;
+  }
+}
+
+async function keepAdmissionSession(options = {}){
+  const resolvedAdmissionId = Number(CURRENT_ADMISSION || 0);
+  if(!resolvedAdmissionId) return false;
+  const res = await fetch(`${API}?action=keep_admission_session`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify({ admission_id: resolvedAdmissionId })
+  });
+  const out = await res.json().catch(()=>({ ok:false }));
+  if(res.ok && out.ok){
+    return true;
+  }
+  if(res.status === 409){
+    stopAdmissionSessionHeartbeat();
+    if(options.notifyOnConflict !== false){
+      alert(out.error || 'Otro enfermero está cargando gastos a esta cuenta.');
+    }
+    await closeAdmissionDetailModal({ clearSelection: true, releaseLock: false });
+    await loadAdmissions();
+    return false;
+  }
+  if(options.showError){
+    alert(out.error || 'No se pudo mantener la sesión de esta admisión');
+  }
+  return false;
+}
+
+
+function normalizeDoc(value){
+  return (value || '').replace(/[^0-9A-Za-z]/g,'').toUpperCase();
+}
+
+function normalizeBillingCustomerType(value){
+  const raw = String(value || '').trim().toLowerCase();
+  if(raw === 'nit') return 'nit';
+  if(raw === 'cui') return 'cui';
+  return '';
+}
+
+function normalizeBillingCustomerValue(value){
+  return String(value || '').trim().toUpperCase();
+}
+
+function ensureSilentToastHost(){
+  let host = document.getElementById('silentToastHost');
+  if(host) return host;
+  host = document.createElement('div');
+  host.id = 'silentToastHost';
+  host.className = 'silent-toast-host';
+  document.body.appendChild(host);
+  return host;
+}
+
+function showSilentToast(title, message){
+  const host = ensureSilentToastHost();
+  const toast = document.createElement('div');
+  toast.className = 'silent-toast';
+  toast.innerHTML = `<strong>${escapeHtml(title)}</strong><div>${escapeHtml(message)}</div>`;
+  host.appendChild(toast);
+  window.setTimeout(()=>{
+    toast.classList.add('fade-out');
+    window.setTimeout(()=>toast.remove(), 220);
+  }, 6500);
+}
+
+function getStoredReadyNoticeKeys(){
+  try{
+    const raw = JSON.parse(localStorage.getItem(DISCHARGE_READY_STORAGE_KEY) || '[]');
+    return Array.isArray(raw) ? raw.filter(Boolean) : [];
+  }catch(_){
+    return [];
+  }
+}
+
+function hasStoredReadyNotice(key){
+  return getStoredReadyNoticeKeys().includes(key);
+}
+
+function rememberReadyNotice(key){
+  if(!key) return;
+  const next = getStoredReadyNoticeKeys().filter(item=>item !== key);
+  next.push(key);
+  while(next.length > 180) next.shift();
+  try{
+    localStorage.setItem(DISCHARGE_READY_STORAGE_KEY, JSON.stringify(next));
+  }catch(_){}
+}
+
+function admissionReadyKey(adm){
+  if(!adm || !adm.id) return '';
+  return `emer:${adm.id}:${adm.latest_paid_sale_id || adm.latest_paid_at || adm.total_payments || ''}`;
+}
+
+function isRecentPaidAdmission(adm){
+  if(!adm?.latest_paid_at) return false;
+  const time = new Date(adm.latest_paid_at).getTime();
+  if(!Number.isFinite(time)) return false;
+  return (Date.now() - time) <= DISCHARGE_READY_RECENT_MS;
+}
+
+function isAdmissionReadyForDischarge(adm){
+  if(!adm) return false;
+  const status = String(adm.status || '').toLowerCase();
+  const balance = Number(adm.balance != null ? adm.balance : 0);
+  return status === 'open' && !!adm.latest_paid_at && balance <= 0.009;
+}
+
+function syncDischargeReadyNotifications(admissions, options = {}){
+  const { initial = false } = options;
+  const readyAdmissions = (admissions || []).filter(isAdmissionReadyForDischarge);
+  const currentKeys = new Set(readyAdmissions.map(admissionReadyKey).filter(Boolean));
+  if(isNurseRole()){
+    readyAdmissions.forEach(adm=>{
+      const key = admissionReadyKey(adm);
+      if(!key || READY_NOTICE_CACHE.has(key) || hasStoredReadyNotice(key)) return;
+      if(initial && !isRecentPaidAdmission(adm)) return;
+      rememberReadyNotice(key);
+      const patientName = adm.cliente_nombre || adm.nombre || `#${adm.id}`;
+      showSilentToast('Cuenta pagada', `El paciente: ${patientName}, ya pagó su cuenta. Se puede dar de alta.`);
+    });
+  }
+  READY_NOTICE_CACHE = currentKeys;
+}
+
+function updateAdmissionReadyDetail(admission, totals = null){
+  const readyTag = document.getElementById('detailReadyTag');
+  if(!readyTag) return;
+  const fromList = ADMISSIONS.find(item=>Number(item.id) === Number(admission?.id)) || {};
+  const balance = totals?.balance != null ? Number(totals.balance || 0) : Number(fromList.balance || 0);
+  const ready = isAdmissionReadyForDischarge({ ...fromList, ...admission, balance });
+  readyTag.style.display = ready ? '' : 'none';
+}
+
+async function runSilentSync(){
+  if(SILENT_SYNC_RUNNING || !isNurseRole()) return;
+  SILENT_SYNC_RUNNING = true;
+  try{
+    await loadAdmissions({ silent:true, initial:false });
+    await loadClients(CLIENT_SEARCH_TERM);
+    if(CURRENT_ADMISSION){
+      await refreshAdmission({ silent:true });
+    }
+  }finally{
+    SILENT_SYNC_RUNNING = false;
+  }
+}
+
+function startSilentSync(){
+  if(SILENT_SYNC_TIMER){
+    window.clearInterval(SILENT_SYNC_TIMER);
+    SILENT_SYNC_TIMER = null;
+  }
+  if(!isNurseRole()) return;
+  SILENT_SYNC_TIMER = window.setInterval(()=>{
+    runSilentSync().catch(()=>{});
+  }, SILENT_SYNC_MS);
+}
+
+function stopHospitalRealtimeEvents(){
+  if(HOSPITAL_EVENTS_RETRY_TIMER){
+    window.clearTimeout(HOSPITAL_EVENTS_RETRY_TIMER);
+    HOSPITAL_EVENTS_RETRY_TIMER = null;
+  }
+  if(HOSPITAL_EVENTS_SOURCE){
+    try{ HOSPITAL_EVENTS_SOURCE.close(); }catch(_){}
+    HOSPITAL_EVENTS_SOURCE = null;
+  }
+}
+
+function scheduleRealtimeSync(){
+  if(REALTIME_SYNC_TIMER) return;
+  REALTIME_SYNC_TIMER = window.setTimeout(()=>{
+    REALTIME_SYNC_TIMER = null;
+    runSilentSync().catch(()=>{});
+  }, 120);
+}
+
+function startHospitalRealtimeEvents(){
+  stopHospitalRealtimeEvents();
+  if(!isNurseRole() || typeof EventSource === 'undefined') return;
+  const params = new URLSearchParams();
+  params.set('action','events');
+  params.set('tipo', currentPatientQueueArea());
+  const source = new EventSource(`${API}?${params.toString()}`);
+  HOSPITAL_EVENTS_SOURCE = source;
+  const triggerSync = ()=>scheduleRealtimeSync();
+  source.addEventListener('connected', triggerSync);
+  source.addEventListener('hospital', triggerSync);
+  source.onerror = ()=>{
+    if(HOSPITAL_EVENTS_SOURCE !== source) return;
+    try{ source.close(); }catch(_){}
+    HOSPITAL_EVENTS_SOURCE = null;
+    if(HOSPITAL_EVENTS_RETRY_TIMER) return;
+    HOSPITAL_EVENTS_RETRY_TIMER = window.setTimeout(()=>{
+      HOSPITAL_EVENTS_RETRY_TIMER = null;
+      startHospitalRealtimeEvents();
+    }, 3000);
+  };
+}
+
+function renderClientMatchTag(client){
+  const matchField = String(client?.match_field || '').trim();
+  if(matchField === 'documento') return '<span class="tag">DPI del paciente</span>';
+  if(matchField === 'encargado_dpi') return '<span class="tag">DPI del encargado</span>';
+  if(matchField === 'both') return '<span class="tag">Coincide en ambos</span>';
+  return '';
+}
+
+function currentPatientQueueArea(){
+  return 'emergencia';
+}
+
+function currentPatientQueueLabel(){
+  return 'Emergencia';
+}
+
+function renderClientAreaTag(client){
+  const area = String(client?.pending_area || '').trim().toLowerCase();
+  if(area === 'emergencia') return '<span class="tag">Pendiente en Emergencia</span>';
+  if(area === 'hospitalizacion') return '<span class="tag">Pendiente en Hospitalización</span>';
+  return '';
+}
+
+function getCurrentAdmissionCustomerDocument(){
+  return normalizeBillingCustomerValue(CURRENT_ADMISSION_DATA?.client?.documento || '');
+}
+
+function syncChargeCustomerFields(options = {}){
+  const { resetType = false } = options;
+  const typeSelect = document.getElementById('chargeCustomerType');
+  const docInput = document.getElementById('chargeCustomerDocument');
+  if(!typeSelect || !docInput) return;
+  if(resetType || !normalizeBillingCustomerType(typeSelect.value)){
+    typeSelect.value = 'cui';
+  }
+  const type = normalizeBillingCustomerType(typeSelect.value) || 'cui';
+  const clientDoc = getCurrentAdmissionCustomerDocument();
+  if(type === 'cui'){
+    docInput.placeholder = 'CUI del paciente';
+    if(!docInput.value || docInput.dataset.autoFill === '1'){
+      docInput.value = clientDoc;
+      docInput.dataset.autoFill = clientDoc ? '1' : '0';
+    }
+    return;
+  }
+  docInput.placeholder = 'NIT para facturación';
+  if(docInput.dataset.autoFill === '1'){
+    docInput.value = '';
+  }
+  docInput.dataset.autoFill = '0';
+}
+
+function normalizeBranchLabel(value){
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase()
+    .trim();
+}
+
+function findBranchByAliases(aliases){
+  const needles = (aliases || []).map(normalizeBranchLabel).filter(Boolean);
+  return BRANCHES.find(b => {
+    const name = normalizeBranchLabel(b?.name || '');
+    return needles.some(needle => name.includes(needle));
+  }) || null;
+}
+
+function todayISO(){
+  const d = new Date();
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+function weekdayES(date){
+  const d = date instanceof Date ? date : new Date();
+  try{
+    return new Intl.DateTimeFormat('es-GT',{weekday:'long'}).format(d);
+  }catch(e){
+    return d.toLocaleDateString('es-ES',{weekday:'long'});
+  }
+}
+
+function calcAge(dateStr){
+  if(!dateStr) return null;
+  const dob = new Date(dateStr);
+  if(isNaN(dob)) return null;
+  const diff = new Date(Date.now() - dob.getTime());
+  return Math.abs(diff.getUTCFullYear() - 1970);
+}
+
+function clientFormElements(){
+  const form = document.getElementById('clientForm');
+  return form ? form.elements : null;
+}
+
+function getIneEmergencyPayload(){
+  return {
+    client_id: CLIENT_EDITING_ID ? Number(CLIENT_EDITING_ID) : null,
+    tipo: 'emergencia',
+    fecha: document.getElementById('ineEFecha')?.value || todayISO(),
+    igss: document.getElementById('ineEIgss')?.value || null,
+    dia_consulta: document.getElementById('ineEDiaConsulta')?.value || null,
+    sexo: document.getElementById('ineESexo')?.value || null,
+    pueblo: document.getElementById('ineEPueblo')?.value || null,
+    edad_anios: document.getElementById('ineEEdadA')?.value || null,
+    edad_meses: document.getElementById('ineEEdadM')?.value || null,
+    direccion: document.getElementById('ineEDir')?.value || null,
+    municipio: document.getElementById('ineEMuni')?.value || null,
+    consulta: document.getElementById('ineEConsulta')?.value || null,
+    control_materno: document.getElementById('ineEControl')?.value || null,
+    diagnostico: document.getElementById('ineEDiag')?.value || null,
+    cie: document.getElementById('ineECie')?.value || 'Vivo',
+    tratamiento: document.getElementById('ineETrat')?.value || null,
+    traslado: document.getElementById('ineETraslado')?.value || null,
+    branch_id: EMERGENCY_BRANCH_ID || null
+  };
+}
+
+async function registerIneOnly(){
+  if(!CAN_MANAGE_PATIENT_DATA){
+    alert('Permiso denegado para registrar datos del paciente');
+    return;
+  }
+  const payload = getIneEmergencyPayload();
+  const res = await fetch('api/ine_reports',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(payload)
+  });
+  const out = await res.json().catch(()=>({ok:false}));
+  if(!res.ok || !out.ok){
+    alert(out.error || 'Error guardando INE');
+    return;
+  }
+  alert('Datos registrados');
+  cancelClientEdit();
+  if(clientSearchInput) clientSearchInput.value = '';
+  await loadClients('');
+}
+
+function fillClientFormFields(client){
+  const fields = clientFormElements();
+  if(!fields) return;
+  const map = {
+    nombre: client?.nombre || '',
+    documento: client?.documento || '',
+    telefono: client?.telefono || '',
+    direccion: client?.direccion || '',
+    encargado_nombre: client?.encargado_nombre || '',
+    encargado_dpi: client?.encargado_dpi || ''
+  };
+  Object.entries(map).forEach(([key,val])=>{
+    if(fields[key]){
+      fields[key].value = val || '';
+    }
+  });
+  if(fields['fecha_nacimiento']){
+    const dob = client?.fecha_nacimiento ? String(client.fecha_nacimiento).substring(0,10) : '';
+    fields['fecha_nacimiento'].value = dob;
+  }
+  if(fields['es_menor']){
+    const minor = client && Number(client.es_menor) ? '1' : '0';
+    fields['es_menor'].value = minor;
+  }
+  fillVitalSigns(client?.signos_vitales || null);
+  syncVitalPatientContext(client || null);
+  updateGuardianDisplay();
+}
+
+function updateClientFormState(client = null){
+  const submitBtn = document.getElementById('clientSubmitBtn');
+  const cancelBtn = document.getElementById('clientCancelEdit');
+  const hint = document.getElementById('clientEditHint');
+  const editing = Boolean(CLIENT_EDITING_ID);
+  const info = client || CLIENT_EDITING_DATA;
+  if(editing){
+    if(info){
+      CLIENT_EDITING_DATA = info;
+    }
+    if(submitBtn) submitBtn.textContent = isDoctorRole() ? 'Actualizar signos y registro' : 'Actualizar paciente';
+    if(cancelBtn) cancelBtn.style.display = 'inline-flex';
+    if(hint){
+      const label = info ? (info.nombre || `ID ${info.id}`) : `ID ${CLIENT_EDITING_ID}`;
+      const docLabel = info?.documento ? ` · DPI: ${info.documento}` : '';
+      hint.textContent = isDoctorRole() ? `Editando registro y signos de: ${label}${docLabel}` : `Editando: ${label}`;
+      hint.style.display = 'block';
+    }
+  }else{
+    CLIENT_EDITING_DATA = null;
+    if(submitBtn) submitBtn.textContent = isDoctorRole() ? 'Guardar registro' : 'Guardar paciente';
+    if(cancelBtn) cancelBtn.style.display = 'none';
+    if(hint){
+      hint.textContent = isDoctorRole() ? 'Formulario visible para registrar paciente, signos vitales e INE desde esta misma pantalla.' : '';
+      hint.style.display = isDoctorRole() ? 'block' : 'none';
+    }
+  }
+  syncVitalPatientContext(info || null);
+  syncClientFormVisibility();
+  refreshClientListHighlights();
+}
+
+function refreshClientListHighlights(){
+  const nodes = document.querySelectorAll('#clientsList .client-entry');
+  nodes.forEach(node=>{
+    const id = Number(node.dataset.id);
+    if(CLIENT_EDITING_ID && id === Number(CLIENT_EDITING_ID)){
+      node.classList.add('editing');
+    }else{
+      node.classList.remove('editing');
+    }
+  });
+}
+
+function startClientEdit(clientId){
+  const id = Number(clientId);
+  const client = CLIENTS.find(c=>Number(c.id) === id);
+  if(!client){
+    return;
+  }
+  CLIENT_EDITING_ID = id;
+  CLIENT_EDITING_DATA = client;
+  fillClientFormFields(client);
+  updateClientFormState(client);
+  if(isDoctorRole()){
+    document.getElementById('vitalsSection')?.scrollIntoView({ behavior:'smooth', block:'start' });
+    document.getElementById('vitalPeso')?.focus();
+  }
+}
+
+function cancelClientEdit(){
+  const form = document.getElementById('clientForm');
+  CLIENT_EDITING_ID = null;
+  CLIENT_EDITING_DATA = null;
+  if(form){
+    form.reset();
+  }
+  const ineFecha = document.getElementById('ineEFecha');
+  if(ineFecha) ineFecha.value = todayISO();
+  const ineDia = document.getElementById('ineEDiaConsulta');
+  if(ineDia) ineDia.value = weekdayES(new Date());
+  const ineCie = document.getElementById('ineECie');
+  if(ineCie){
+    ineCie.value = 'Vivo';
+    ineCie.readOnly = true;
+  }
+  const ineTraslado = document.getElementById('ineETraslado');
+  if(ineTraslado) ineTraslado.value = '';
+  fillVitalSigns(null);
+  syncVitalPatientContext(null);
+  updateClientFormState(null);
+  updateGuardianDisplay();
+}
+
+function renderRoomOptions(){
+  const select = document.getElementById('transferRoomType');
+  const board = document.getElementById('transferRoomStatus');
+  const priceHint = document.getElementById('transferRoomHint');
+  if (select) {
+    select.innerHTML = '<option value="">Seleccione habitación...</option>';
+  }
+  if (board) board.innerHTML = '';
+  if (!ROOM_STATUS || typeof ROOM_STATUS !== 'object') return;
+  Object.entries(ROOM_STATUS).forEach(([key, info])=>{
+    if (select) {
+      const opt = document.createElement('option');
+      opt.value = key;
+      const disponibles = info.available ?? 0;
+      opt.textContent = `${info.label || key} · ${money(info.price || 0)} · ${disponibles} camas libres`;
+      opt.disabled = disponibles <= 0;
+      select.appendChild(opt);
+    }
+    if (board) {
+      const card = document.createElement('div');
+      card.className = 'room-card';
+      card.innerHTML = `
+        <strong>${info.label || key}</strong>
+        <span>Costo: ${money(info.price || 0)}</span>
+        <span>Disponibles: ${info.available ?? 0}</span>
+      `;
+      board.appendChild(card);
+    }
+  });
+  if (priceHint && select) {
+    const updateHint = ()=>{
+      const opt = select.selectedOptions[0];
+      if (opt && opt.value) {
+        priceHint.textContent = opt.textContent;
+      } else {
+        priceHint.textContent = 'Selecciona una sala para consultar precio y disponibilidad.';
+      }
+    };
+    if (!select.dataset.roomHintBound) {
+      select.addEventListener('change', updateHint);
+      select.dataset.roomHintBound = '1';
+    }
+    updateHint();
+  }
+}
+
+async function loadRoomStatus(){
+  try{
+    const res = await fetch(`${API}?action=room_status`,{credentials:'include'});
+    if(!res.ok) return;
+    const data = await res.json();
+    if(!data.ok) return;
+    ROOM_STATUS = data.rooms || {};
+    renderRoomOptions();
+  }catch(e){
+    console.warn('sin rooms', e);
+  }
+}
+
+async function authCheck(){
+  const res = await fetch('api/auth_check',{credentials:'include'});
+  if(!res.ok){ window.location = 'login.html'; return; }
+  const data = await res.json();
+  if(!data.ok){ window.location = 'login.html'; return; }
+  USER_ROLE = (data.user.rol || data.user.role || '').toString();
+  const rl = normalizeRole(USER_ROLE);
+  if(!['cashiee','admin','administrador','enfermeria','superadmin','medico','direccionmedica','consultorio2','consultorio3'].includes(rl)){
+    alert('Acceso solo para Emergencia');
+    window.location = 'inventario.html';
+    throw new Error('auth');
+  }
+  CAN_MANAGE_PATIENT_DATA = canManagePatientDataRole(rl);
+  CAN_EDIT_VITAL_SIGNS = canEditVitalSignsRole(rl);
+  CAN_MANAGE_BILLING = canManageBillingRole(rl);
+  applyRoleUi();
+}
+
+function applyRoleUi(){
+  const clientForm = document.getElementById('clientForm');
+  const roleHint = document.getElementById('patientRoleHint');
+  const vitalsSection = document.getElementById('vitalsSection');
+  const admissionPanel = document.getElementById('admissionPanel');
+  const patientsView = document.getElementById('patientsView');
+  if(clientForm){
+    updateClientFormState(CLIENT_EDITING_DATA);
+  }
+  if(vitalsSection){
+    vitalsSection.style.display = CAN_EDIT_VITAL_SIGNS && CAN_MANAGE_PATIENT_DATA ? '' : 'none';
+  }
+  if(admissionPanel){
+    admissionPanel.style.display = USER_ROLE === 'medico' ? 'none' : '';
+  }
+  if(patientsView){
+    patientsView.classList.toggle('single-panel', USER_ROLE === 'medico');
+  }
+  if(roleHint){
+    if(!CAN_MANAGE_PATIENT_DATA){
+      roleHint.textContent = 'Enfermería ve aquí los pacientes pendientes de Emergencia y también puede buscar por DPI cuando lo necesite.';
+      roleHint.style.display = 'block';
+    }else if(CAN_EDIT_VITAL_SIGNS){
+      roleHint.textContent = 'El formulario de paciente, signos vitales e INE está visible en esta pantalla. Puede buscar por DPI o registrar directamente.';
+      roleHint.style.display = 'block';
+    }else{
+      roleHint.style.display = 'none';
+      roleHint.textContent = '';
+    }
+  }
+  const chargeSection = document.getElementById('chargeForm')?.closest('.two-cols');
+  if(chargeSection){
+    chargeSection.style.display = CAN_MANAGE_BILLING ? '' : 'none';
+  }
+  ['refreshDetailBtn','chargeBtn','transferBtn','dischargeBtn'].forEach(id=>{
+    const btn = document.getElementById(id);
+    if(btn){
+      btn.style.display = CAN_MANAGE_BILLING ? '' : 'none';
+    }
+  });
+}
+
+async function loadBranches(){
+  const res = await fetch('api/branches',{credentials:'include'});
+  if(!res.ok) throw new Error('branches');
+  BRANCHES = await res.json();
+  const emerg = findBranchByAliases(['emergencia','emergency']);
+  const hospital = findBranchByAliases(['hospitalizacion','hospitalización','hospital']);
+  if(!emerg){
+    throw new Error('No se encontró la sucursal de Emergencia. Revise la configuración de sucursales.');
+  }
+  EMERGENCY_BRANCH_ID = Number(emerg.id);
+  HOSPITAL_BRANCH_ID = hospital ? Number(hospital.id) : null;
+  document.getElementById('branchLabel').innerText = emerg.name || '--';
+  await loadRoomStatus();
+}
+
+async function loadClients(docFilter = ''){
+  CLIENT_SEARCH_TERM = (docFilter || '').trim();
+  const params = new URLSearchParams();
+  params.set('action','list_clients');
+  params.set('tipo', currentPatientQueueArea());
+  const list = document.getElementById('clientsList');
+  const select = document.getElementById('clientSelect');
+  const searchHint = document.getElementById('clientSearchHint');
+  if (list) list.innerHTML = '';
+  if (select) select.innerHTML = '';
+  const queueOnly = !CLIENT_SEARCH_TERM;
+  if (queueOnly) {
+    params.set('pending_only', '1');
+    if (list) list.innerHTML = `<div class="muted">Cargando pacientes pendientes de ${currentPatientQueueLabel()}...</div>`;
+  } else {
+    params.set('documento', CLIENT_SEARCH_TERM);
+  }
+  const res = await fetch(`${API}?${params.toString()}`,{credentials:'include'});
+  if(!res.ok) throw new Error('clients');
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error||'clients');
+  CLIENTS = data.clients || [];
+  let guardianMatches = 0;
+  let ownMatches = 0;
+  CLIENTS.forEach(c=>{
+    if(c.match_field === 'encargado_dpi') guardianMatches++;
+    if(c.match_field === 'documento' || c.match_field === 'both') ownMatches++;
+    const docLabel = c.documento || 'S/D';
+    if (list) {
+      const entry = document.createElement('div');
+      entry.className = 'client-entry';
+      entry.dataset.id = c.id;
+      const info = document.createElement('div');
+      const edad = c.fecha_nacimiento ? `${calcAge(c.fecha_nacimiento)||''} años` : '';
+      const titleRow = document.createElement('div');
+      const nameBtn = document.createElement('button');
+      nameBtn.type = 'button';
+      nameBtn.className = 'client-name-link';
+      nameBtn.innerHTML = `${escapeHtml(c.nombre || '')}${Number(c.es_menor) ? ' <span class="tag">Menor</span>' : ''}${renderClientAreaTag(c) ? ` ${renderClientAreaTag(c)}` : ''}${renderClientMatchTag(c) ? ` ${renderClientMatchTag(c)}` : ''}`;
+      nameBtn.addEventListener('click', ()=>openClientSummary(c.id));
+      titleRow.appendChild(nameBtn);
+      const meta = document.createElement('div');
+      meta.className = 'muted';
+      meta.textContent = `DPI: ${docLabel}${c.telefono ? ` · ${c.telefono}` : ''}${edad ? ` · ${edad}` : ''}`;
+      info.appendChild(titleRow);
+      info.appendChild(meta);
+      if(c.encargado_nombre){
+        const encargado = document.createElement('div');
+        encargado.className = 'muted';
+        encargado.textContent = `Encargado: ${c.encargado_nombre}${c.encargado_dpi ? ` (${c.encargado_dpi})` : ''}`;
+        info.appendChild(encargado);
+      }
+      const actions = document.createElement('div');
+      actions.className = 'client-actions';
+      if(CAN_MANAGE_PATIENT_DATA){
+        const editBtn = document.createElement('button');
+        editBtn.type = 'button';
+        editBtn.className = 'client-edit-btn';
+        editBtn.textContent = isDoctorRole() ? 'Asignar signos vitales' : 'Editar';
+        editBtn.addEventListener('click', ()=>{
+          startClientEdit(c.id);
+        });
+        actions.appendChild(editBtn);
+      }
+      entry.appendChild(info);
+      entry.appendChild(actions);
+      list.appendChild(entry);
+    }
+    if (select) {
+      const opt = document.createElement('option');
+      opt.value = c.id;
+      opt.textContent = `${c.nombre} (${docLabel})`;
+      opt.dataset.doc = normalizeDoc(docLabel);
+      opt.dataset.guard = normalizeDoc(c.encargado_dpi || '');
+      select.appendChild(opt);
+    }
+  });
+  if (!CLIENTS.length) {
+    const msg = CLIENT_SEARCH_TERM
+      ? 'No se encontraron pacientes con ese DPI.'
+      : `No hay pacientes pendientes de admisión en ${currentPatientQueueLabel()}.`;
+    if (list) list.innerHTML = `<div class="muted">${msg}</div>`;
+  }
+  if (searchHint) {
+    if (CLIENT_SEARCH_TERM) {
+      const parts = [`Filtrando por DPI: ${CLIENT_SEARCH_TERM}`];
+      if (guardianMatches && ownMatches) {
+        parts.push('Hay coincidencias por paciente y por encargado. Seleccione por nombre el registro correcto.');
+      } else if (guardianMatches) {
+        parts.push('Las coincidencias mostradas son por DPI del encargado.');
+      }
+      searchHint.textContent = parts.join(' · ');
+    } else {
+      searchHint.textContent = `Mostrando pacientes pendientes de admisión en ${currentPatientQueueLabel()}.`;
+    }
+  }
+  if (CLIENT_EDITING_ID) {
+    const stillVisible = CLIENTS.some(c=>Number(c.id) === Number(CLIENT_EDITING_ID));
+    if (!stillVisible) {
+      cancelClientEdit();
+    }
+  }
+  refreshClientListHighlights();
+  updateGuardianDisplay();
+  syncClientFormVisibility();
+}
+
+
+async function loadAdmissions(options = {}){
+  const { silent = false, initial = false } = options;
+  if(!EMERGENCY_BRANCH_ID) return;
+  let res;
+  try{
+    res = await fetch(`${API}?action=list_admissions&status=open&branch_id=${EMERGENCY_BRANCH_ID}&tipo=emergencia`,{credentials:'include'});
+  }catch(err){
+    if(silent) return;
+    throw err;
+  }
+  if(!res.ok){
+    if(silent) return;
+    throw new Error('admissions');
+  }
+  const data = await res.json();
+  if(!data.ok){
+    if(silent) return;
+    throw new Error(data.error||'error');
+  }
+  ADMISSIONS = data.admissions || [];
+  syncDischargeReadyNotifications(ADMISSIONS, { initial });
+  const tbody = document.querySelector('#admissionsTable tbody');
+  tbody.innerHTML = '';
+  ADMISSIONS.forEach(adm=>{
+    const tr = document.createElement('tr');
+    tr.dataset.admissionId = adm.id;
+    const ready = isAdmissionReadyForDischarge(adm);
+    tr.classList.toggle('is-ready', ready);
+    tr.innerHTML = `
+      <td>${adm.id}</td>
+      <td>${adm.cliente_nombre||''}${ready ? ' <span class="tag ready-tag">Listo para alta</span>' : ''}</td>
+      <td>${formatDateTime(adm.created_at)}</td>
+      <td>${money(adm.total_charges||0)}</td>
+      <td>${money(adm.total_payments||0)}</td>
+      <td>${money(adm.balance||0)}</td>
+    `;
+    if(CAN_MANAGE_BILLING){
+      tr.addEventListener('click', ()=>selectAdmission(adm.id));
+    }else{
+      tr.style.cursor = 'default';
+    }
+    tbody.appendChild(tr);
+  });
+  const stillExists = CURRENT_ADMISSION != null && ADMISSIONS.some(adm=>Number(adm.id) === Number(CURRENT_ADMISSION));
+  if(CURRENT_ADMISSION != null && !stillExists){
+    closeAdmissionDetailModal();
+    return;
+  }
+  updateAdmissionSelection();
+}
+
+const HISTORY_LIMIT = 120;
+
+function renderHistory(rows){
+  const tbody = document.getElementById('historyBody');
+  if(!tbody) return;
+  tbody.innerHTML = '';
+  if(!rows || !rows.length){
+    tbody.innerHTML = '<tr><td colspan="9" class="muted">Sin historial disponible.</td></tr>';
+    return;
+  }
+  rows.forEach(row=>{
+    const payments = Array.isArray(row.payments) ? row.payments : [];
+    const receipts = payments
+      .filter(p=>p && p.sale_id)
+      .map(p=>`<button type="button" class="receipt-btn" data-sale="${p.sale_id}">#${p.sale_id}</button>`)
+      .join(' ');
+    const receiptsHtml = receipts ? `<div class="receipt-list">${receipts}</div>` : '<span class="muted">Sin comprobante</span>';
+    const totalCharges = Number(row.total_charges || 0);
+    const totalPayments = Number(row.total_payments || 0);
+    const discountAmount = Number(row.discount_amount || 0);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${row.nombre || ''}</td>
+      <td>${row.documento || '--'}</td>
+      <td>#${row.id || '--'}</td>
+      <td>${formatDateTime(row.created_at)}</td>
+      <td>${formatDateTime(row.closed_at)}</td>
+      <td>${money(totalCharges)}</td>
+      <td>${money(discountAmount)}</td>
+      <td>${money(totalPayments)}</td>
+      <td>${receiptsHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadHistory(term = ''){
+  const hint = document.getElementById('historyHint');
+  const params = new URLSearchParams();
+  params.set('action','history_emergency');
+  params.set('limit', String(HISTORY_LIMIT));
+  if(EMERGENCY_BRANCH_ID) params.set('branch_id', EMERGENCY_BRANCH_ID);
+  if(term) params.set('documento', term);
+  if(hint){
+    hint.textContent = term ? `Resultados para DPI: ${term}` : `Mostrando últimos ${HISTORY_LIMIT} cierres.`;
+  }
+  const res = await fetch(`${API}?${params.toString()}`,{credentials:'include'});
+  if(!res.ok) throw new Error('history');
+  const data = await res.json();
+  if(!data.ok) throw new Error(data.error || 'history');
+  renderHistory(data.admissions || []);
+}
+
+function setView(view){
+  const patientsView = document.getElementById('patientsView');
+  const historyView = document.getElementById('historyView');
+  const navPatients = document.getElementById('navPacientes');
+  const navHistory = document.getElementById('navHistory');
+  const showHistory = view === 'history';
+  if (patientsView) patientsView.style.display = showHistory ? 'none' : '';
+  if (historyView) historyView.style.display = showHistory ? '' : 'none';
+  if (navPatients) navPatients.classList.toggle('active', !showHistory);
+  if (navHistory) navHistory.classList.toggle('active', showHistory);
+  if (showHistory) {
+    const term = (document.getElementById('historySearch')?.value || '').trim();
+    loadHistory(term).catch(err=>alert(err.message||'Error cargando historial'));
+  }
+}
+
+function syncViewFromHash(){
+  const hash = (window.location.hash || '').toLowerCase();
+  if (hash === '#historial') {
+    setView('history');
+  } else {
+    setView('patients');
+  }
+}
+
+function normalizeProductPayload(payload){
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
+async function loadProducts(){
+  if(!EMERGENCY_BRANCH_ID) return;
+  const res = await fetch(`api/productos?branch_id=${EMERGENCY_BRANCH_ID}`,{credentials:'include'});
+  if(!res.ok) return;
+  const payload = await res.json();
+  PRODUCTS = normalizeProductPayload(payload);
+  const chargeTypeSelect = document.getElementById('chargeProductType');
+  const chargePresentation = document.getElementById('chargePresentation');
+  const select = document.getElementById('productSelect');
+  renderChargeProductOptions();
+  if(chargeTypeSelect){
+    chargeTypeSelect.onchange = ()=>{
+      renderChargeProductOptions();
+      syncChargeProductPricing({ fromProductChange: true });
+    };
+  }
+  if(select){
+    select.onchange = ()=>{
+      syncChargeProductPricing({ fromProductChange: true });
+    };
+  }
+  if(chargePresentation){
+    chargePresentation.onchange = ()=>{
+      syncChargeProductPricing();
+    };
+  }
+  resetChargePresentationOptions();
+  syncChargeProductPricing({ fromProductChange: true });
+}
+
+function toNumericValue(value){
+  const num = Number(value);
+  return Number.isFinite(num) ? num : null;
+}
+
+function roundChargeMoney(value){
+  const num = Number(value || 0);
+  return Number.isFinite(num) ? Number(num.toFixed(2)) : 0;
+}
+
+function normalizeChargePresentationType(value){
+  const normalized = String(value || '').trim().toLowerCase();
+  if(normalized === 'caja' || normalized === 'unidad') return normalized;
+  if(normalized === 'tableta' || normalized === 'blister') return 'blister';
+  return 'unidad';
+}
+
+function normalizeChargeProductType(value){
+  const normalized = String(value || '').trim().toLowerCase();
+  if(normalized === 'servicio') return 'servicio';
+  if(normalized === 'combo') return 'combo';
+  return 'medicamento';
+}
+
+function getSelectedChargeProductType(){
+  const select = document.getElementById('chargeProductType');
+  return normalizeChargeProductType(select?.value || 'medicamento');
+}
+
+function getChargeProductPlaceholder(type){
+  if(type === 'servicio') return '-- Servicio manual --';
+  if(type === 'combo') return '-- Seleccione combo --';
+  return '-- Seleccione medicamento --';
+}
+
+function renderChargeProductOptions(){
+  const select = document.getElementById('productSelect');
+  if(!select) return;
+  const activeType = getSelectedChargeProductType();
+  const previousValue = String(select.value || '');
+  select.innerHTML = `<option value="">${getChargeProductPlaceholder(activeType)}</option>`;
+  let hasPreviousValue = false;
+  (PRODUCTS||[])
+    .filter(product => normalizeChargeProductType(product?.tipo) === activeType)
+    .forEach(product => {
+      const opt = document.createElement('option');
+      opt.value = product.id;
+      const price = (product.precio_venta_actual != null ? Number(product.precio_venta_actual) : Number(product.precio_publico || 0));
+      const stockLabel = getChargeProductStockLabel(product);
+      opt.textContent = activeType === 'servicio'
+        ? `${product.nombre_comercial} (Servicio · ${money(price)})`
+        : activeType === 'combo'
+        ? `${product.nombre_comercial} (Combo · ${stockLabel} · ${money(price)})`
+        : `${product.nombre_comercial} (${stockLabel} · ${money(price)})`;
+      opt.dataset.price = price;
+      opt.dataset.nombre = product.nombre_comercial;
+      if (String(product.id) === previousValue) {
+        hasPreviousValue = true;
+      }
+      select.appendChild(opt);
+    });
+  select.value = hasPreviousValue ? previousValue : '';
+}
+
+function getChargeProductStockLabel(product){
+  const type = normalizeChargeProductType(product?.tipo);
+  if(type === 'servicio') return 'sin control de stock';
+  const stock = Number(product?.stock || 0);
+  if(!Number.isFinite(stock) || stock <= 0) return 'sin stock';
+  return `stock ${Number.isInteger(stock) ? stock : Math.round(stock)}`;
+}
+
+function resolveChargePresentationConfig(product){
+  const unidadesPorTableta = Math.max(1, Math.round(toNumericValue(product?.unidades_por_tableta) || 1));
+  const tabletasPorCaja = Math.max(1, Math.round(toNumericValue(product?.tabletas_por_caja) || 1));
+  const precioCajaBase =
+    toNumericValue(product?.precio_venta_actual) ??
+    toNumericValue(product?.precio_caja) ??
+    toNumericValue(product?.precio_publico) ??
+    0;
+  const precioCaja = roundChargeMoney(Math.max(precioCajaBase, 0));
+  const baseTableta = tabletasPorCaja > 0 ? precioCaja / tabletasPorCaja : precioCaja;
+  const explicitTableta = toNumericValue(product?.precio_tableta);
+  let precioTableta =
+    explicitTableta != null
+      ? roundChargeMoney(Math.max(explicitTableta, 0))
+      : tabletasPorCaja > 1
+      ? roundChargeMoney(Math.max(baseTableta * 1.05, baseTableta + 0.01))
+      : roundChargeMoney(baseTableta);
+  if(tabletasPorCaja > 1 && precioCaja > 0){
+    precioTableta = Math.max(precioTableta, roundChargeMoney(baseTableta + 0.01));
+  }
+  const baseUnidad = unidadesPorTableta > 0 ? precioTableta / unidadesPorTableta : precioTableta;
+  const explicitUnidad = toNumericValue(product?.precio_unidad);
+  let precioUnidad =
+    explicitUnidad != null
+      ? roundChargeMoney(Math.max(explicitUnidad, 0))
+      : unidadesPorTableta > 1
+      ? roundChargeMoney(Math.max(baseUnidad * 1.05, baseUnidad + 0.01))
+      : roundChargeMoney(baseUnidad);
+  if(unidadesPorTableta > 1 && precioTableta > 0){
+    precioUnidad = Math.max(precioUnidad, roundChargeMoney(baseUnidad + 0.01));
+  }
+  return {
+    unidadesPorTableta,
+    tabletasPorCaja,
+    precioCaja: roundChargeMoney(precioCaja),
+    precioTableta: roundChargeMoney(precioTableta),
+    precioUnidad: roundChargeMoney(precioUnidad)
+  };
+}
+
+function getChargePresentationChoices(product){
+  const config = resolveChargePresentationConfig(product);
+  const choices = [];
+  const presentationText = String(product?.presentacion || '').trim().toLowerCase();
+  const showBox = config.tabletasPorCaja > 1 || presentationText.includes('caja');
+  const showBlister =
+    config.unidadesPorTableta > 1 ||
+    config.tabletasPorCaja > 1 ||
+    presentationText.includes('blister') ||
+    /(tableta|tabletas|capsula|capsulas|cápsula|cápsulas|comprimido|comprimidos)/.test(presentationText) ||
+    toNumericValue(product?.precio_tableta) != null;
+  if(showBox){
+    choices.push({ value:'caja', label:`Caja (${money(config.precioCaja)})` });
+  }
+  if(showBlister){
+    choices.push({ value:'blister', label:`Blister (${money(config.precioTableta)})` });
+  }
+  choices.push({ value:'unidad', label:`Unidad (${money(config.precioUnidad)})` });
+  return choices;
+}
+
+function getChargePresentationPrice(product, presentationType){
+  const config = resolveChargePresentationConfig(product);
+  const type = normalizeChargePresentationType(presentationType);
+  if(type === 'caja') return config.precioCaja;
+  if(type === 'blister') return config.precioTableta;
+  return config.precioUnidad;
+}
+
+function getChargePresentationLabel(type, quantity){
+  const normalized = normalizeChargePresentationType(type);
+  const singular = normalized === 'caja' ? 'caja' : normalized === 'blister' ? 'blister' : 'unidad';
+  const plural = normalized === 'caja' ? 'cajas' : normalized === 'blister' ? 'blisteres' : 'unidades';
+  const qty = Number(quantity || 0);
+  return Math.abs(qty - 1) < 0.0001 ? singular : plural;
+}
+
+function findSelectedChargeProduct(){
+  const select = document.getElementById('productSelect');
+  const productId = Number(select?.value || 0);
+  if(!productId) return null;
+  return (PRODUCTS || []).find(p=>Number(p.id) === productId) || null;
+}
+
+function resetChargePresentationOptions(){
+  const presentationSelect = document.getElementById('chargePresentation');
+  if(!presentationSelect) return;
+  presentationSelect.innerHTML = '<option value="unidad">Unidad</option>';
+  presentationSelect.value = 'unidad';
+  presentationSelect.disabled = true;
+}
+
+function updateChargePresentationOptions(product, preferredType){
+  const presentationSelect = document.getElementById('chargePresentation');
+  if(!presentationSelect) return 'unidad';
+  if(!product){
+    resetChargePresentationOptions();
+    return 'unidad';
+  }
+  if(normalizeChargeProductType(product?.tipo) !== 'medicamento'){
+    resetChargePresentationOptions();
+    return 'unidad';
+  }
+  const choices = getChargePresentationChoices(product);
+  presentationSelect.disabled = false;
+  presentationSelect.innerHTML = choices
+    .map(choice=>`<option value="${choice.value}">${choice.label}</option>`)
+    .join('');
+  const defaultType = choices[0]?.value || 'unidad';
+  const nextType = choices.some(choice=>choice.value === preferredType) ? preferredType : defaultType;
+  presentationSelect.value = nextType;
+  return nextType;
+}
+
+function resetChargeProductFields(options = {}){
+  const form = document.getElementById('chargeForm');
+  if(!form) return;
+  const descriptionInput = form.querySelector('[name="description"]');
+  const quantityInput = form.querySelector('[name="quantity"]');
+  const unitPriceInput = form.querySelector('[name="unit_price"]');
+  if(descriptionInput) descriptionInput.value = '';
+  if(unitPriceInput) unitPriceInput.value = '';
+  if(options.resetQuantity !== false && quantityInput) quantityInput.value = '1';
+  resetChargePresentationOptions();
+}
+
+function syncChargeProductPricing(options = {}){
+  const form = document.getElementById('chargeForm');
+  if(!form) return;
+  const fromProductChange = options.fromProductChange === true;
+  const descriptionInput = form.querySelector('[name="description"]');
+  const quantityInput = form.querySelector('[name="quantity"]');
+  const unitPriceInput = form.querySelector('[name="unit_price"]');
+  if(fromProductChange){
+    resetChargeProductFields();
+  }
+  const product = findSelectedChargeProduct();
+  const presentationSelect = document.getElementById('chargePresentation');
+  const preferredType = presentationSelect ? presentationSelect.value : 'unidad';
+  const resolvedType = updateChargePresentationOptions(product, preferredType);
+  if(!product){
+    return;
+  }
+  if(unitPriceInput){
+    unitPriceInput.value = getChargePresentationPrice(product, resolvedType);
+  }
+  if(quantityInput && (!quantityInput.value || Number(quantityInput.value) <= 0)){
+    quantityInput.value = '1';
+  }
+  if(descriptionInput && (fromProductChange || !descriptionInput.value.trim())){
+    descriptionInput.value = product.nombre_comercial || '';
+  }
+}
+
+async function submitClient(e){
+  e.preventDefault();
+  if(!CAN_MANAGE_PATIENT_DATA){
+    alert('Permiso denegado para registrar pacientes');
+    return;
+  }
+  const form = e.target;
+  const data = Object.fromEntries(new FormData(form).entries());
+  if(CAN_EDIT_VITAL_SIGNS){
+    data.signos_vitales = getVitalSignsPayload();
+  }
+  const doc = (data.documento || '').trim();
+  const encDoc = (data.encargado_dpi || '').trim();
+  if (!doc && !encDoc) {
+    alert('Debe ingresar DPI del paciente o del acompañante');
+    return;
+  }
+  const editingId = CLIENT_EDITING_ID ? Number(CLIENT_EDITING_ID) : null;
+  const action = editingId ? 'update_client' : 'create_client';
+  if (editingId) {
+    data.id = editingId;
+  } else {
+    data.ine = getIneEmergencyPayload();
+  }
+  data.pending_area = currentPatientQueueArea();
+  const res = await fetch(`${API}?action=${action}`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(data)
+  });
+  const out = await res.json();
+  if(!res.ok || !out.ok) throw new Error(out.error||'Error');
+  cancelClientEdit();
+  await loadClients(CLIENT_SEARCH_TERM);
+  const message = editingId ? 'Paciente actualizado' : 'Paciente registrado';
+  alert(message);
+}
+
+async function submitAdmission(e){
+  e.preventDefault();
+  if(!EMERGENCY_BRANCH_ID){
+    alert('No hay sucursal configurada');
+    return;
+  }
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  data.branch_id = EMERGENCY_BRANCH_ID;
+  data.tipo = 'emergencia';
+  const res = await fetch(`${API}?action=create_admission`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(data)
+  });
+  const out = await res.json();
+  if(!res.ok || !out.ok) throw new Error(out.error||'Error');
+  e.target.reset();
+  await loadClients(CLIENT_SEARCH_TERM);
+  await loadAdmissions();
+  alert('Admisión creada');
+}
+
+async function selectAdmission(id){
+  const nextAdmissionId = Number(id || 0);
+  if(!nextAdmissionId) return;
+  const previousAdmissionId = Number(CURRENT_ADMISSION || 0);
+  const claimed = await acquireAdmissionSession(nextAdmissionId);
+  if(!claimed) return;
+  if(previousAdmissionId && previousAdmissionId !== nextAdmissionId){
+    await releaseAdmissionSession(previousAdmissionId, { stopHeartbeat: false });
+  }
+  CURRENT_ADMISSION = nextAdmissionId;
+  renderAdmissionDetailLoading(nextAdmissionId);
+  updateAdmissionSelection();
+  openAdmissionDetailModal();
+  startAdmissionSessionHeartbeat();
+  await refreshAdmission();
+}
+
+async function refreshAdmission(options = {}){
+  const { silent = false } = options;
+  if(!CURRENT_ADMISSION) return;
+  let res;
+  try{
+    res = await fetch(`${API}?action=get_admission&admission_id=${CURRENT_ADMISSION}`,{credentials:'include'});
+  }catch(err){
+    if(!silent){
+      alert(err.message || 'Error cargando admisión');
+    }
+    return;
+  }
+  const data = await res.json();
+  if(!res.ok || !data.ok){
+    if(!silent){
+      alert(data.error||'Error cargando admisión');
+    }
+    return;
+  }
+  const { admission, client, charges, payments, totals } = data;
+  CURRENT_ADMISSION_DATA = { admission, client, totals };
+  document.getElementById('detailTitle').innerText = `Adm. #${admission.id} - ${client?.nombre||''}`;
+  const ingreso = formatDateTime(admission.created_at);
+  const egreso = admission.closed_at ? formatDateTime(admission.closed_at) : '--';
+  document.getElementById('detailSubtitle').innerText = `Ingreso: ${ingreso} · Egreso: ${egreso}`;
+  document.getElementById('detailStatus').innerText = admission.status === 'open' ? 'Abierta' : 'Cerrada';
+  const chargeBtn = document.getElementById('chargeBtn');
+  if (chargeBtn) chargeBtn.disabled = admission.status !== 'open' || !CAN_MANAGE_BILLING;
+  const dischargeBtn = document.getElementById('dischargeBtn');
+  if (dischargeBtn) dischargeBtn.disabled = admission.status !== 'open' || !CAN_MANAGE_BILLING;
+  const transferBtn = document.getElementById('transferBtn');
+  if (transferBtn) {
+    transferBtn.disabled = admission.status !== 'open' || !CAN_MANAGE_BILLING;
+  }
+  document.getElementById('detailTotalCharges').innerText = money(totals.charges||0);
+  document.getElementById('detailTotalPayments').innerText = money(totals.payments||0);
+  document.getElementById('detailBalance').innerText = money(totals.balance||0);
+  updateAdmissionReadyDetail(admission, totals);
+  const discountTag = document.getElementById('detailDiscountTag');
+  if (discountTag) {
+    const discountAmount = Number(admission.discount_amount || 0);
+    const discountPercent = Number(admission.discount_percent || 0);
+    if (discountAmount > 0.009) {
+      const pct = discountPercent ? ` (${discountPercent.toFixed(2)}%)` : '';
+      discountTag.textContent = `Descuento: ${money(discountAmount)}${pct}`;
+      discountTag.style.display = '';
+    } else {
+      discountTag.style.display = 'none';
+    }
+  }
+  const chargesBody = document.getElementById('chargesBody');
+  const paymentsBody = document.getElementById('paymentsBody');
+  chargesBody.innerHTML = '';
+  (charges||[]).forEach(row=>{
+    const tr = document.createElement('tr');
+    const total = (parseFloat(row.quantity||0)*parseFloat(row.unit_price||0));
+    const chargeId = Number(row.id || 0);
+    const roomChargeId = Number(admission.room_charge_id || 0);
+    const protectedTransferCharge = admission.tipo === 'hospitalizacion' && Boolean(row.protected_after_transfer);
+    const canDelete =
+      CAN_MANAGE_BILLING &&
+      admission.status === 'open' &&
+      chargeId > 0 &&
+      roomChargeId !== chargeId &&
+      !protectedTransferCharge;
+    const rowType = normalizeChargeProductType(row.product_type || (row.product_id ? 'medicamento' : 'servicio'));
+    const quantityLabel = rowType === 'medicamento'
+      ? `${row.quantity} ${getChargePresentationLabel(row.presentation_type, row.quantity)}`
+      : rowType === 'combo'
+      ? `${row.quantity} combo${Math.abs(Number(row.quantity || 0) - 1) < 0.0001 ? '' : 's'}`
+      : `${row.quantity} servicio${Math.abs(Number(row.quantity || 0) - 1) < 0.0001 ? '' : 's'}`;
+    const descriptionLabel = protectedTransferCharge
+      ? `${row.description||''} <span class="muted">(Cargo de Emergencia)</span>`
+      : (row.description||'');
+    tr.innerHTML = `
+      <td>${descriptionLabel}</td>
+      <td>${quantityLabel}</td>
+      <td>${money(row.unit_price)}</td>
+      <td>${money(total)}</td>
+      <td>${canDelete ? `<button type="button" class="danger" data-delete-charge="${chargeId}">Eliminar</button>` : protectedTransferCharge ? '<span class="muted">Bloqueado por traslado</span>' : '<span class="muted">--</span>'}</td>
+    `;
+    chargesBody.appendChild(tr);
+  });
+  paymentsBody.innerHTML = '';
+  (payments||[]).forEach(row=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${money(row.amount)}</td><td>${row.method||''}</td><td>${row.note||''}</td><td>${formatDateTime(row.created_at)}</td>`;
+    paymentsBody.appendChild(tr);
+  });
+}
+
+async function submitCharge(e){
+  e.preventDefault();
+  if(!CURRENT_ADMISSION){ alert('Seleccione una admisión'); return; }
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  const selectedType = getSelectedChargeProductType();
+  if(!data.product_id && selectedType !== 'servicio'){
+    alert(selectedType === 'combo' ? 'Seleccione un combo.' : 'Seleccione un medicamento.');
+    return;
+  }
+  data.admission_id = CURRENT_ADMISSION;
+  data.quantity = data.quantity ? parseFloat(data.quantity) : 0;
+  data.unit_price = data.unit_price ? parseFloat(data.unit_price) : null;
+  const selectedProduct = findSelectedChargeProduct();
+  const resolvedType = normalizeChargeProductType(selectedProduct?.tipo || data.charge_product_type || (data.product_id ? 'medicamento' : 'servicio'));
+  if(!data.product_id || resolvedType !== 'medicamento'){
+    delete data.presentation_type;
+  }
+  const res = await fetch(`${API}?action=add_charge`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(data)
+  });
+  const out = await res.json();
+  if(!res.ok || !out.ok){ alert(out.error||'Error agregando cargo'); return; }
+  e.target.reset();
+  renderChargeProductOptions();
+  resetChargePresentationOptions();
+  syncChargeProductPricing({ fromProductChange: true });
+  await refreshAdmission();
+  await loadAdmissions();
+}
+
+async function deleteCharge(chargeId){
+  const resolvedChargeId = Number(chargeId || 0);
+  if(!CURRENT_ADMISSION || !resolvedChargeId){
+    alert('Cargo inválido');
+    return;
+  }
+  if(!confirm('¿Eliminar este cargo?')){
+    return;
+  }
+  const res = await fetch(`${API}?action=delete_charge`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify({ admission_id: CURRENT_ADMISSION, charge_id: resolvedChargeId })
+  });
+  const out = await res.json();
+  if(!res.ok || !out.ok){
+    alert(out.error||'Error eliminando cargo');
+    return;
+  }
+  await refreshAdmission();
+  await loadAdmissions();
+}
+
+
+async function discharge(){
+  if(!CURRENT_ADMISSION){ alert('Seleccione una admisión'); return; }
+  if(!confirm('¿Dar de alta esta admisión?')) return;
+  const invoiceWindow = window.open('', '_blank');
+  try {
+    const res = await fetch(`${API}?action=discharge`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify({ admission_id: CURRENT_ADMISSION })
+    });
+    const out = await res.json();
+    if(!res.ok || !out.ok){
+      if(invoiceWindow && !invoiceWindow.closed){ invoiceWindow.close(); }
+      alert(out.error||'Error al cerrar la admisión');
+      return;
+    }
+    const discountMsg = out.descuento ? `\nDescuento aplicado: ${money(out.descuento)}` : '';
+    alert(`Admision cerrada. Venta #${out.sale_id || '--'}${discountMsg}`);
+    if(out.sale_id){
+      const url = `api/invoice_print?venta_id=${encodeURIComponent(out.sale_id)}`;
+      if(invoiceWindow){
+        invoiceWindow.location = url;
+      }else{
+        window.open(url, '_blank');
+      }
+    } else if(invoiceWindow && !invoiceWindow.closed){
+      invoiceWindow.close();
+    }
+    closeAdmissionDetailModal();
+    await loadClients(CLIENT_SEARCH_TERM);
+    await loadAdmissions();
+    await loadHistory();
+  } catch (err) {
+    if(invoiceWindow && !invoiceWindow.closed){ invoiceWindow.close(); }
+    alert(err.message || 'Error al cerrar la admisión');
+  }
+}
+
+function money(v){ return 'Q'+Number(v||0).toFixed(2); }
+
+async function logout(){
+  try{ await fetch('api/logout',{credentials:'include'});}catch(e){}
+  window.location='login.html';
+}
+
+function openChargeModal(){
+  if(!CURRENT_ADMISSION){
+    alert('Seleccione una admisión');
+    return;
+  }
+  syncChargeCustomerFields({ resetType: true });
+  setModalOpen('chargeModal', true);
+  syncModalBodyState();
+}
+
+function closeChargeModal(){
+  setModalOpen('chargeModal', false);
+  const form = document.getElementById('chargeModalForm');
+  if(form) form.reset();
+  const docInput = document.getElementById('chargeCustomerDocument');
+  if(docInput) docInput.dataset.autoFill = '0';
+  syncModalBodyState();
+}
+
+async function submitChargeModal(e){
+  e.preventDefault();
+  if(!CURRENT_ADMISSION){
+    alert('Seleccione una admisión');
+    return;
+  }
+  const customerType = normalizeBillingCustomerType(document.getElementById('chargeCustomerType')?.value);
+  let customerDocument = normalizeBillingCustomerValue(document.getElementById('chargeCustomerDocument')?.value);
+  if(customerType === 'cui' && !customerDocument){
+    customerDocument = getCurrentAdmissionCustomerDocument();
+  }
+  if(!customerType){
+    alert('Seleccione si la facturación será con NIT o CUI');
+    return;
+  }
+  if(!customerDocument){
+    alert(`Ingrese el ${customerType.toUpperCase()} para el documento`);
+    return;
+  }
+  const payload = {
+    admission_id: CURRENT_ADMISSION,
+    customer_doc_type: customerType,
+    customer_doc_value: customerDocument
+  };
+  const res = await fetch(`${API}?action=create_billing_doc`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(payload)
+  });
+  const out = await res.json();
+  if(!res.ok || !out.ok){
+    alert(out.error||'Error al generar documento');
+    return;
+  }
+  closeChargeModal();
+  await refreshAdmission();
+  const docId = out.doc_id || out.doc?.id;
+  const totals = out.totals || {};
+  const amount = totals.balance != null ? totals.balance : (totals.net != null ? totals.net : totals.charges);
+  const msgTotal = amount != null ? `Total: ${money(amount)}` : '';
+  alert(`Documento #${docId || '--'} generado.${msgTotal ? `\n${msgTotal}` : ''}`);
+  if (docId) {
+    const url = `api/billing_doc_pdf?doc_id=${encodeURIComponent(docId)}`;
+    window.open(url, '_blank');
+  }
+}
+
+function openTransferModal(){
+  if(!CURRENT_ADMISSION){
+    alert('Seleccione una admisión');
+    return;
+  }
+  if(!HOSPITAL_BRANCH_ID){
+    alert('No hay sucursal de hospitalización configurada');
+    return;
+  }
+  setModalOpen('transferModal', true);
+  syncModalBodyState();
+  if(!Object.keys(ROOM_STATUS || {}).length){
+    loadRoomStatus();
+  }
+}
+
+function closeTransferModal(){
+  setModalOpen('transferModal', false);
+  const form = document.getElementById('transferForm');
+  if(form) form.reset();
+  syncModalBodyState();
+}
+
+async function submitTransfer(e){
+  e.preventDefault();
+  if(!CURRENT_ADMISSION){
+    alert('Seleccione una admisión');
+    return;
+  }
+  if(!HOSPITAL_BRANCH_ID){
+    alert('No hay sucursal de hospitalización configurada');
+    return;
+  }
+  const data = Object.fromEntries(new FormData(e.target).entries());
+  if(!data.room_type){
+    alert('Seleccione una habitación');
+    return;
+  }
+  const payload = {
+    admission_id: CURRENT_ADMISSION,
+    room_type: data.room_type,
+    branch_id: HOSPITAL_BRANCH_ID,
+    note: data.note || ''
+  };
+  const res = await fetch(`${API}?action=transfer_to_hospital`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'include',
+    body: JSON.stringify(payload)
+  });
+  const out = await res.json();
+  if(!res.ok || !out.ok){
+    alert(out.error||'Error al trasladar');
+    return;
+  }
+  closeTransferModal();
+  alert(`Traslado realizado. La cuenta continúa como admisión #${out.admission_id} en Hospitalización.`);
+  closeAdmissionDetailModal();
+  await loadClients(CLIENT_SEARCH_TERM);
+  await loadAdmissions();
+  await loadHistory();
+}
+
+document.getElementById('clientForm').addEventListener('submit', e=>submitClient(e).catch(err=>alert(err.message||'Error')));
+const registerIneBtn = document.getElementById('clientSubmitBtn2');
+if(registerIneBtn){
+  registerIneBtn.addEventListener('click', ()=>registerIneOnly().catch(err=>alert(err.message||'Error')));
+}
+document.getElementById('admissionForm').addEventListener('submit', e=>submitAdmission(e).catch(err=>alert(err.message||'Error')));
+document.getElementById('chargeForm').addEventListener('submit', e=>submitCharge(e).catch(console.error));
+document.getElementById('refreshDetailBtn').addEventListener('click', ()=>refreshAdmission());
+document.getElementById('dischargeBtn').addEventListener('click', ()=>discharge());
+const closeAdmissionDetailBtn = document.getElementById('closeAdmissionDetailBtn');
+if(closeAdmissionDetailBtn){ closeAdmissionDetailBtn.addEventListener('click', ()=>closeAdmissionDetailModal()); }
+const chargeBtn = document.getElementById('chargeBtn');
+if(chargeBtn){ chargeBtn.addEventListener('click', ()=>openChargeModal()); }
+const chargeCancelBtn = document.getElementById('chargeCancelBtn');
+if(chargeCancelBtn){ chargeCancelBtn.addEventListener('click', ()=>closeChargeModal()); }
+const chargeModalForm = document.getElementById('chargeModalForm');
+if(chargeModalForm){ chargeModalForm.addEventListener('submit', e=>submitChargeModal(e).catch(err=>alert(err.message||'Error al generar documento'))); }
+const chargesBodyEl = document.getElementById('chargesBody');
+if(chargesBodyEl){
+  chargesBodyEl.addEventListener('click', e=>{
+    const btn = e.target.closest('[data-delete-charge]');
+    if(!btn) return;
+    deleteCharge(btn.dataset.deleteCharge).catch(err=>alert(err.message||'Error eliminando cargo'));
+  });
+}
+const chargeCustomerType = document.getElementById('chargeCustomerType');
+if(chargeCustomerType){ chargeCustomerType.addEventListener('change', ()=>syncChargeCustomerFields()); }
+const chargeCustomerDocument = document.getElementById('chargeCustomerDocument');
+if(chargeCustomerDocument){
+  chargeCustomerDocument.addEventListener('input', ()=>{
+    chargeCustomerDocument.dataset.autoFill = '0';
+  });
+}
+const transferBtn = document.getElementById('transferBtn');
+if(transferBtn){ transferBtn.addEventListener('click', ()=>openTransferModal()); }
+const transferCancelBtn = document.getElementById('transferCancelBtn');
+if(transferCancelBtn){ transferCancelBtn.addEventListener('click', ()=>closeTransferModal()); }
+const transferForm = document.getElementById('transferForm');
+if(transferForm){ transferForm.addEventListener('submit', e=>submitTransfer(e).catch(err=>alert(err.message||'Error al trasladar'))); }
+bindModalBackdrop('admissionDetailModal', ()=>closeAdmissionDetailModal());
+bindModalBackdrop('chargeModal', ()=>closeChargeModal());
+bindModalBackdrop('transferModal', ()=>closeTransferModal());
+bindModalBackdrop('clientSummaryModal', ()=>closeClientSummary());
+const closeClientSummaryBtn = document.getElementById('closeClientSummaryBtn');
+if(closeClientSummaryBtn){ closeClientSummaryBtn.addEventListener('click', ()=>closeClientSummary()); }
+window.addEventListener('keydown', e=>{
+  if(e.key !== 'Escape') return;
+  if(isModalOpen('clientSummaryModal')){
+    closeClientSummary();
+    return;
+  }
+  if(isModalOpen('transferModal')){
+    closeTransferModal();
+    return;
+  }
+  if(isModalOpen('chargeModal')){
+    closeChargeModal();
+    return;
+  }
+  if(isModalOpen('admissionDetailModal')){
+    closeAdmissionDetailModal();
+  }
+});
+window.addEventListener('beforeunload', releaseAdmissionSessionOnUnload);
+window.addEventListener('beforeunload', ()=>{ 
+  if(SILENT_SYNC_TIMER){
+    window.clearInterval(SILENT_SYNC_TIMER);
+    SILENT_SYNC_TIMER = null;
+  }
+  if(REALTIME_SYNC_TIMER){
+    window.clearTimeout(REALTIME_SYNC_TIMER);
+    REALTIME_SYNC_TIMER = null;
+  }
+  stopHospitalRealtimeEvents();
+});
+document.addEventListener('visibilitychange', ()=>{
+  if(!document.hidden){
+    if(isNurseRole() && !HOSPITAL_EVENTS_SOURCE){
+      startHospitalRealtimeEvents();
+    }
+    runSilentSync().catch(()=>{});
+  }
+});
+const clientSearchInput = document.getElementById('clientSearch');
+const clientSearchBtn = document.getElementById('clientSearchBtn');
+const clientSearchClear = document.getElementById('clientSearchClear');
+const clientCancelEditBtn = document.getElementById('clientCancelEdit');
+if(clientCancelEditBtn){
+  clientCancelEditBtn.addEventListener('click', ()=>cancelClientEdit());
+}
+if(clientSearchBtn){
+  clientSearchBtn.addEventListener('click', ()=>{
+    const term = clientSearchInput ? clientSearchInput.value.trim() : '';
+    loadClients(term).catch(err=>alert(err.message||'Error buscando pacientes'));
+  });
+}
+if(clientSearchClear){
+  clientSearchClear.addEventListener('click', ()=>{
+    if(clientSearchInput) clientSearchInput.value = '';
+    loadClients('').catch(err=>alert(err.message||'Error buscando pacientes'));
+  });
+}
+if(clientSearchInput){
+  clientSearchInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      loadClients(clientSearchInput.value.trim()).catch(err=>alert(err.message||'Error buscando pacientes'));
+    }
+  });
+}
+const historySearchInput = document.getElementById('historySearch');
+const historySearchBtn = document.getElementById('historySearchBtn');
+const historySearchClear = document.getElementById('historySearchClear');
+const historyTable = document.getElementById('historyTable');
+if(historySearchBtn){
+  historySearchBtn.addEventListener('click', ()=>{
+    const term = historySearchInput ? historySearchInput.value.trim() : '';
+    loadHistory(term).catch(err=>alert(err.message||'Error cargando historial'));
+  });
+}
+if(historySearchClear){
+  historySearchClear.addEventListener('click', ()=>{
+    if(historySearchInput) historySearchInput.value = '';
+    loadHistory('').catch(err=>alert(err.message||'Error cargando historial'));
+  });
+}
+if(historySearchInput){
+  historySearchInput.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      loadHistory(historySearchInput.value.trim()).catch(err=>alert(err.message||'Error cargando historial'));
+    }
+  });
+}
+if(historyTable){
+  historyTable.addEventListener('click', (e)=>{
+    const btn = e.target.closest('.receipt-btn');
+    if(!btn) return;
+    const saleId = btn.dataset.sale;
+    if(saleId){
+      window.open(`api/invoice_print?venta_id=${encodeURIComponent(saleId)}`,'_blank');
+    }
+  });
+}
+window.addEventListener('hashchange', syncViewFromHash);
+const dobInput = document.getElementById('clientDob');
+const minorSelect = document.getElementById('clientIsMinor');
+function updateGuardianDisplay(){
+  const manualMinor = minorSelect ? minorSelect.value === '1' : false;
+  const isMinor = manualMinor;
+  const container = document.getElementById('guardianFields');
+  const nameInput = document.getElementById('guardianName');
+  const dpiInput = document.getElementById('guardianDpi');
+  if(container){
+    container.style.display = '';
+  }
+  if(nameInput){
+    nameInput.required = isMinor;
+  }
+  if(dpiInput){
+    dpiInput.required = isMinor;
+  }
+  if (minorSelect && !isMinor) minorSelect.value = '0';
+}
+if(dobInput){
+  dobInput.addEventListener('change', updateGuardianDisplay);
+}
+if(minorSelect){
+  minorSelect.addEventListener('change', updateGuardianDisplay);
+}
+
+(async function(){
+  try{
+    await authCheck();
+    await loadBranches();
+    await Promise.all([loadClients(), loadProducts(), loadAdmissions({ initial:true })]);
+    updateGuardianDisplay();
+    const ineFecha = document.getElementById('ineEFecha');
+    if(ineFecha && !ineFecha.value) ineFecha.value = todayISO();
+    const ineDia = document.getElementById('ineEDiaConsulta');
+    if(ineDia && !ineDia.value) ineDia.value = weekdayES(new Date());
+    const ineCie = document.getElementById('ineECie');
+    if(ineCie){
+      ineCie.value = 'Vivo';
+      ineCie.readOnly = true;
+    }
+    syncViewFromHash();
+    startHospitalRealtimeEvents();
+    startSilentSync();
+  }catch(err){
+    console.error(err);
+    if(err && err.message === 'auth'){
+      window.location = 'login.html';
+      return;
+    }
+    alert(err.message || 'Error al cargar Emergencia');
+  }
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

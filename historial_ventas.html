@@ -1,0 +1,299 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <link rel="stylesheet" href="css/style.css">  <meta charset="utf-8" />
+  <title>Historial de ventas</title>
+  <style>
+    :root{
+      --bg:#f5f7fb; --fg:#333; --card:#fff;
+      --brand1:#2b5876; --brand2:#4e4376; --muted:#666; --muted2:#999;
+      --shadow:0 4px 10px rgba(0,0,0,.06); --radius:10px;
+      --accent:#e9eef7;
+    }
+    *{box-sizing:border-box}
+    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg)}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,var(--brand1),var(--brand2));color:#fff}
+    header h1{margin:0;font-size:22px;font-weight:600}
+    header .actions{display:flex;gap:8px}
+    .btn{background:#fff;color:var(--brand1);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;transition:.2s;text-decoration:none;display:inline-block}
+    .btn:hover{opacity:.9}
+    .container{max-width:1100px;margin:20px auto;padding:0 20px}
+    .card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+    .filters{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:12px}
+    .filters label{font-size:12px;color:var(--muted)}
+    .filters input,.filters select{width:100%;padding:8px;border:1px solid #e2e8f0;border-radius:8px;background:#fff}
+    .toolbar{display:flex;justify-content:space-between;align-items:center;margin:8px 0 14px}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden}
+    thead th{font-size:12px;text-transform:uppercase;letter-spacing:.03em;color:var(--muted);background:#f1f5fb;padding:10px;text-align:left;border-bottom:1px solid #eaeef5}
+    tbody td{padding:10px;border-bottom:1px solid #f0f3f8;font-size:14px}
+    tbody tr:hover{background:#fafcff}
+    .muted{color:var(--muted2);font-size:12px}
+    .pill{display:inline-block;padding:3px 8px;border-radius:999px;background:var(--accent);font-size:12px}
+    .right{text-align:right}
+    .total{font-weight:600}
+    .pagination{display:flex;gap:8px;align-items:center;justify-content:flex-end;margin-top:12px}
+    .pagination button{padding:6px 10px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;cursor:pointer}
+    #detailModal{position:fixed; inset:0; display:none; background:rgba(0,0,0,.35); align-items:center; justify-content:center; padding:20px}
+    #detailCard{background:#fff; border-radius:12px; box-shadow:var(--shadow); width:min(800px,95vw); padding:16px}
+    #detailCard h3{margin:0 0 10px 0}
+    .modal-actions{display:flex;justify-content:flex-end;margin-top:10px}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Historial de ventas</h1>
+    <div class="actions">
+      <button class="btn" id="backBtn">Volver a Inventario</button>
+      
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="filters">
+        <div>
+          <label>Desde</label>
+          <input type="date" id="fStart">
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input type="date" id="fEnd">
+        </div>
+        <div>
+          <label>Buscar (cliente, nota, usuario)</label>
+          <input type="text" id="fQuery" placeholder="Texto a buscar...">
+        </div>
+        <div>
+          <label>Elementos por página</label>
+          <select id="pageSize">
+            <option>10</option><option selected>20</option><option>50</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:flex-end;gap:8px">
+          <button class="btn" id="applyFilters">Aplicar</button>
+          <button class="btn" id="clearFilters">Limpiar</button>
+        </div>
+      </div>
+
+      <div class="toolbar">
+        <div class="muted" id="countInfo">—</div>
+        <div class="muted">Total mostrado: <span class="total" id="shownTotal">Q0.00</span></div>
+      </div>
+
+      <div style="overflow:auto;border-radius:10px">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Fecha</th>
+              <th>Usuario</th>
+              <th class="right">Total</th>
+              <th>Método</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+
+      <div class="pagination">
+        <button id="prevBtn">Anterior</button>
+        <div class="muted" id="pageInfo">Página 1/1</div>
+        <button id="nextBtn">Siguiente</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="detailModal">
+    <div id="detailCard">
+      <h3>Detalle de venta <span id="dVentaId"></span></h3>
+      <div class="muted" id="dMeta"></div>
+      <div style="margin-top:10px;overflow:auto;max-height:50vh">
+        <table>
+          <thead>
+            <tr>
+              <th>Producto</th>
+              <th class="right">Cantidad</th>
+              <th class="right">P. Unit</th>
+              <th class="right">Subtotal</th>
+            </tr>
+          </thead>
+          <tbody id="detailRows"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions">
+        <button class="btn" id="openPDF">Abrir comprobante</button>
+        <button class="btn" id="closeDetail">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+(async () => {
+  let PAGE = 1;
+  let PAGES = 1;
+  let ROLE = '';
+  const getLang = () => ((window.I18N && typeof window.I18N.getLang === 'function')
+    ? window.I18N.getLang()
+    : (localStorage.getItem('app_lang') || 'es'));
+  const buildReceiptUrl = (id) => {
+    const saleId = encodeURIComponent(id);
+    const lang = encodeURIComponent(getLang());
+    return `api/invoice_print?venta_id=${saleId}&id=${saleId}&sale_id=${saleId}&lang=${lang}`;
+  };
+
+  const el = s => document.querySelector(s);
+  const rows = el('#rows');
+  const pageInfo = el('#pageInfo');
+  const countInfo = el('#countInfo');
+  const shownTotal = el('#shownTotal');
+
+  const fStart = el('#fStart');
+  const fEnd = el('#fEnd');
+  const fQuery = el('#fQuery');
+  const pageSize = el('#pageSize');
+
+  const backBtn = el('#backBtn');
+  const logoutBtn = el('#logoutBtn');
+
+  el('#applyFilters').onclick = () => { PAGE = 1; load(); };
+  el('#clearFilters').onclick = () => { fStart.value=''; fEnd.value=''; fQuery.value=''; PAGE=1; load(); };
+
+  el('#prevBtn').onclick = () => { if(PAGE>1){ PAGE--; load(); } };
+  el('#nextBtn').onclick = () => { if(PAGE<PAGES){ PAGE++; load(); } };
+
+  async function ensureAuth(){
+    const res = await fetch('api/auth_check', { credentials:'include' });
+    const d = await res.json().catch(()=>({ok:false}));
+    if(!d.ok){ location.href = 'login.html'; return false; }
+    ROLE = (d.user?.rol || '').toLowerCase();
+    if(!['admin','cashier','cajero','cashiee','farmacia','superadmin'].includes(ROLE)){
+      alert('No autorizado');
+      location.href = 'login.html';
+      return false;
+    }
+    if (ROLE === 'cashiee' && backBtn) {
+      backBtn.textContent = 'Volver a Ventas';
+      backBtn.onclick = () => location.href = 'ventas_emergencia.html';
+    } else if (backBtn) {
+      backBtn.onclick = () => location.href = 'inventario.html';
+    }
+    if (logoutBtn) {
+      logoutBtn.onclick = async () => {
+        try{ await fetch('api/logout',{credentials:'include'}) }catch(e){}
+        location.href = 'login.html';
+      };
+    }
+    return true;
+  }
+
+  async function load(){
+    const params = new URLSearchParams();
+    if (fStart.value) params.set('start', fStart.value);
+    if (fEnd.value) params.set('end', fEnd.value);
+    if (fQuery.value.trim()) params.set('q', fQuery.value.trim());
+    params.set('page', PAGE);
+    params.set('pageSize', pageSize.value);
+
+    const res = await fetch('api/history_sales?' + params.toString(), { credentials:'include' });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error || 'Error cargando ventas'); return; }
+
+    rows.innerHTML = '';
+    let sum = 0;
+    data.items.forEach(v => {
+      const totalNum = Number(v.total || 0);
+      sum += totalNum;
+      const fecha = v.fecha || v.created_at || '';
+      const usuario = v.usuario || '-';
+      const metodo = v.payment_form || '-';
+      const id = v.id;
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>#${id}</td>
+        <td>${fecha}</td>
+        <td>${usuario}</td>
+        <td class="right">Q${totalNum.toFixed(2)}</td>
+        <td><span class="pill">${metodo}</span></td>
+        <td>
+          <a class="btn" href="${buildReceiptUrl(id)}" target="_blank" rel="noopener">Ver</a>
+          <button class="btn" data-view="${id}">Detalle</button>
+        </td>`;
+      rows.appendChild(tr);
+    });
+
+    shownTotal.textContent = 'Q' + sum.toFixed(2);
+    countInfo.textContent = `Mostrando ${data.items.length} de ${data.total} resultados`;
+    PAGE = data.page;
+    PAGES = data.pages;
+    pageInfo.textContent = `Página ${PAGE} / ${PAGES}`;
+  }
+
+  rows.addEventListener('click', async (e)=>{
+    const id = e.target?.dataset?.view;
+    if(!id) return;
+
+    const res = await fetch(`api/sale_details?id=${encodeURIComponent(id)}`, { credentials:'include' });
+    const data = await res.json();
+    if(!res.ok){ alert(data.error || 'Error cargando detalle'); return; }
+
+    document.getElementById('dVentaId').textContent = `#${id}`;
+    document.getElementById('dMeta').textContent = `Fecha: ${data.fecha} · Usuario: ${data.usuario || '-'} · Total: Q${Number(data.total || 0).toFixed(2)}`;
+
+    const tbody = document.getElementById('detailRows');
+    tbody.innerHTML = '';
+    (data.items || []).forEach(it=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${it.nombre}</td>
+        <td class="right">${it.cantidad}</td>
+        <td class="right">Q${Number(it.precio_unit).toFixed(2)}</td>
+        <td class="right">Q${Number(it.subtotal).toFixed(2)}</td>`;
+      tbody.appendChild(tr);
+    });
+
+    document.getElementById('openPDF').onclick = ()=>{
+      window.open(buildReceiptUrl(id), '_blank');
+    };
+
+    document.getElementById('detailModal').style.display = 'flex';
+  });
+
+  document.getElementById('closeDetail').onclick = () => {
+    document.getElementById('detailModal').style.display = 'none';
+  };
+
+  if(await ensureAuth()){
+    load();
+  }
+})(); 
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

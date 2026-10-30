@@ -1,0 +1,950 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Contabilidad</title>
+  <style>
+    :root { --accent:#2b5876; --muted:#6b7280; }
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f6fb;color:#1f2937;}
+    header{display:flex;align-items:center;gap:12px;justify-content:space-between;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:20px;}
+    header button{background:#fff;border:none;color:#2b5876;padding:8px 12px;border-radius:6px;cursor:pointer;}
+    .layout{display:grid;grid-template-columns:260px 1fr;gap:16px;max-width:1320px;margin:18px auto;padding:0 16px;}
+    .side{background:#fff;border-radius:10px;padding:14px;box-shadow:0 4px 12px rgba(0,0,0,0.05);position:sticky;top:12px;height:fit-content;}
+    .side h3{margin:0 0 10px;color:#2b5876;}
+    .side ul{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;}
+    .side li{margin:0;}
+    .side button{width:100%;text-align:left;border:1px solid #e5e7eb;background:#fff;border-radius:8px;padding:10px 12px;font-weight:600;color:#1f2937;cursor:pointer;transition:all .2s;}
+    .side button:hover{background:#f5f6fb;border-color:#d1d5db;}
+    .side button.active{background:#2b5876;color:#fff;border-color:#2b5876;box-shadow:0 4px 10px rgba(43,88,118,0.2);}
+    .container{display:flex;flex-direction:column;gap:16px;}
+    .card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 4px 12px rgba(0,0,0,0.05);}
+    h3{margin-top:0;color:#2b5876;}
+    label{display:block;font-weight:600;margin:6px 0 4px;}
+    input, select, textarea{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:6px;font-size:14px;box-sizing:border-box;}
+    textarea{resize:vertical;}
+    button.primary{background:#2b5876;color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;}
+    button.secondary{background:#eef2ff;color:#2b5876;border:1px solid #c7d2fe;padding:8px 12px;border-radius:8px;cursor:pointer;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    table{width:100%;border-collapse:collapse;margin-top:8px;}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left;font-size:13px;}
+    th{background:#f1f5f9;}
+    .row{display:flex;gap:8px;flex-wrap:wrap;}
+    .row > div{flex:1;min-width:200px;}
+    .chips{display:flex;gap:6px;flex-wrap:wrap;}
+    .chip{background:#eef2ff;color:#2b5876;padding:4px 8px;border-radius:6px;font-size:12px;}
+    .muted{color:var(--muted);font-size:13px;}
+  
+    .fs-card{background:#fff;border:1px solid #d1d5db;border-radius:12px;padding:16px;box-shadow:0 6px 14px rgba(0,0,0,0.06);}
+    .fs-header{text-align:center;border-bottom:1px solid #d1d5db;padding-bottom:8px;margin-bottom:12px;}
+    .fs-title{font-weight:700;letter-spacing:.3px;font-size:15px;}
+    .fs-period{color:#374151;font-size:12px;margin-top:4px;}
+    .fs-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;}
+    .fs-col-title{font-weight:700;border-bottom:1px solid #d1d5db;padding-bottom:6px;margin-bottom:8px;}
+    .fs-group{margin-bottom:10px;}
+    .fs-group-title{font-weight:700;margin-bottom:4px;}
+    .fs-row{display:flex;justify-content:space-between;gap:8px;padding:4px 0;}
+    .fs-row .label{font-weight:500;}
+    .fs-row .desc{color:#4b5563;font-size:12px;}
+    .fs-total{display:flex;justify-content:space-between;border-top:1px solid #d1d5db;padding:6px 0;font-weight:700;}
+    .fs-highlight{background:#f8fafc;border:1px dashed #cbd5e1;border-radius:8px;padding:8px;margin-top:8px;display:flex;justify-content:space-between;font-weight:700;}
+    .pl-section{margin-bottom:12px;}
+    .pl-title{font-weight:700;border-bottom:1px solid #d1d5db;padding-bottom:4px;margin-bottom:6px;}
+    .pl-total{display:flex;justify-content:space-between;font-weight:700;padding:4px 0;}
+    .pl-result{display:flex;justify-content:space-between;padding:8px;border:1px solid #d1d5db;border-radius:8px;font-weight:800;}
+    .tbl-clean table{width:100%;border-collapse:collapse;}
+    .tbl-clean th,.tbl-clean td{border:1px solid #e5e7eb;padding:6px;font-size:13px;}
+    .tbl-clean th{background:#f8fafc;font-weight:700;}
+    .tbl-clean tfoot td{font-weight:700;background:#f1f5f9;}
+    @media(max-width: 980px){
+      .layout{grid-template-columns:1fr;}
+      .side{position:relative;}
+      .fs-grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Panel de Contabilidad</h1>
+    <div style="display:flex;gap:8px;">
+      <button onclick="location.href='inventario.html'" class="back-btn">Volver</button>
+      
+    </div>
+  </header>
+
+  <div class="layout">
+    <nav class="side" aria-label="Menú contable">
+      <h3>Menú</h3>
+      <ul>
+        <li><button data-section="cuentasCard" class="active">Catálogo de cuentas</button></li>
+        <li><button data-section="journalCard">Partidas de diario</button></li>
+        <li><button data-section="historyCard">Historial de partidas</button></li>
+        <li><button data-section="reportCard">Estados financieros</button></li>
+        <li><button data-section="bankCard">Bancos y conciliación</button></li>
+        <li><button data-section="checksCard">Cheques</button></li>
+        <li><button data-section="checksHistoryCard">Historial de cheques</button></li>
+        <li><button data-section="cashDepositCard">Depósito de cierre</button></li>
+      </ul>
+    </nav>
+
+    <div class="container">
+
+    <div class="card section" id="cuentasCard">
+      <h3>Catálogo de cuentas</h3>
+      <div class="row">
+        <div>
+          <label>Código</label><input id="accCode" />
+        </div>
+        <div>
+          <label>Nombre</label><input id="accName" />
+        </div>
+        <div>
+          <label>Tipo</label>
+          <select id="accType">
+            <option value="activo">Activo</option>
+            <option value="pasivo">Pasivo</option>
+            <option value="patrimonio">Patrimonio</option>
+            <option value="ingreso">Ingreso</option>
+            <option value="gasto">Gasto</option>
+            <option value="costo_produccion">Costo Producción</option>
+            <option value="costo_ventas">Costo de ventas</option>
+            <option value="gastos_no_deducibles">Gastos no deducibles</option>
+            <option value="perdidas_ganancias">Pérdidas y Ganancias</option>
+          </select>
+        </div>
+        <div>
+          <label>Padre (opcional)</label>
+          <select id="accParent"><option value="">--</option></select>
+        </div>
+      </div>
+      <div class="row">
+        <div><label>Moneda</label><input id="accCurrency" value="GTQ" /></div>
+        <div><label>Nivel</label><input id="accLevel" type="number" value="1" min="1" /></div>
+        <div style="align-self:flex-end;"><button class="primary" id="accSave">Guardar cuenta</button></div>
+      </div>
+      <div id="accountsList" class="muted">Cargando cuentas...</div>
+    </div>
+
+    <div class="card section" id="journalCard" style="display:none;">
+      <h3>Partidas de diario</h3>
+      <div class="row">
+        <div><label>Fecha</label><input id="jeFecha" type="date" /></div>
+        <div><label>Descripción</label><input id="jeDesc" /></div>
+        <input type="hidden" id="jeId">
+      </div>
+      <div class="muted">Líneas (doble partida)</div>
+      <table id="jeLinesTable">
+        <thead><tr><th>Cuenta</th><th>Descripción</th><th>Debe</th><th>Haber</th><th></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <button class="secondary" id="addLine">Agregar línea</button>
+      <div class="row">
+        <div><label>Total Debe</label><input id="totDebe" disabled></div>
+        <div><label>Total Haber</label><input id="totHaber" disabled></div>
+        <div style="align-self:flex-end;"><button class="primary" id="saveJE">Guardar partida</button></div>
+      </div>
+      <div id="jeMsg" class="muted"></div>
+    </div>
+
+    <div class="card section" id="historyCard" style="display:none;">
+      <h3>Historial de partidas</h3>
+      <div class="row">
+        <div><label>Desde</label><input id="histFrom" type="date"></div>
+        <div><label>Hasta</label><input id="histTo" type="date"></div>
+        <div style="align-self:flex-end;"><button class="secondary" id="histBuscar">Filtrar</button></div>
+      </div>
+      <div id="historyTable" class="muted">Cargando...</div>
+    </div>
+
+    <div class="card section" id="reportCard" style="display:none;">
+      <h3>Estados financieros</h3>
+      <div class="row">
+        <div><label>Desde</label><input id="repFrom" type="date"></div>
+        <div><label>Hasta</label><input id="repTo" type="date"></div>
+        <div>
+          <label>Reporte</label>
+          <select id="repType">
+            <option value="trial_balance">Balanza de comprobación</option>
+            <option value="balance_general">Balance general</option>
+            <option value="estado_resultados">Estado de resultados</option>
+            <option value="flujo_efectivo">Flujo de efectivo</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end;"><button class="primary" id="runReport">Generar</button></div>
+      </div>
+      <div id="repResult" class="muted">Seleccione un periodo y genere.</div>
+    </div>
+
+    <div class="card section" id="bankCard" style="display:none;">
+      <h3>Bancos y conciliación</h3>
+      <div class="row">
+        <div><label>Cuenta bancaria</label><input id="bankName" placeholder="Nombre de cuenta" /></div>
+        <div><label>Banco</label><input id="bankBank" /></div>
+        <div><label>No. Cuenta</label><input id="bankNumber" /></div>
+        <div><label>Cuenta contable</label><select id="bankConta"><option value="">Cuenta contable...</option></select></div>
+        <div style="align-self:flex-end;"><button class="secondary" id="bankSave">Guardar cuenta</button></div>
+      </div>
+      <div id="bankLimitMsg" class="muted"></div>
+      <div class="row">
+        <div><label>Cuenta</label><select id="bankSelect"><option value="">Seleccione...</option></select></div>
+        <div><label>Fecha</label><input id="bmFecha" type="date"></div>
+        <div><label>Tipo</label>
+          <select id="bmTipo">
+            <option value="deposito">Depósito</option>
+            <option value="retiro">Retiro</option>
+            <option value="transferencia">Transferencia</option>
+            <option value="cheque">Cheque</option>
+            <option value="cargo">Cargo</option>
+            <option value="abono">Abono</option>
+          </select>
+        </div>
+        <div><label>Monto</label><input id="bmMonto" type="number" step="0.01"></div>
+      </div>
+      <div class="row">
+        <div><label>Referencia</label><input id="bmRef"></div>
+        <div><label>Contracuenta (id)</label><input id="bmContra" placeholder="ID cuenta contable"></div>
+        <div>
+          <label>Conciliado</label>
+          <select id="bmConciliado">
+            <option value="0">No</option>
+            <option value="1">Sí</option>
+          </select>
+        </div>
+        <div style="align-self:flex-end;"><button class="primary" id="bmSave">Registrar movimiento</button></div>
+      </div>
+      <div id="bankMovList" class="muted">Sin movimientos.</div>
+    </div>
+
+    <div class="card section" id="checksCard" style="display:none;">
+      <h3>Cheques</h3>
+      <div class="row">
+        <div><label>ID partida</label><input id="chkEntryId" type="number" min="1" /></div>
+        <div><label>Monto</label><input id="chkAmount" type="number" step="0.01"></div>
+        <div><label>Fecha emisión</label><input id="chkDate" type="date"></div>
+      </div>
+      <div class="row">
+        <div><label>Cuenta bancaria</label><select id="chkBank"><option value="">Seleccione banco...</option></select></div>
+        <div><label>Cuenta contable</label><select id="chkAccount"><option value="">Seleccione cuenta...</option></select></div>
+        <div><label>Beneficiario</label><input id="chkPayTo" placeholder="Beneficiario"></div>
+      </div>
+      <div class="row">
+        <div><label>Nota</label><input id="chkNote" placeholder="Opcional"></div>
+        <div style="align-self:flex-end;"><button class="secondary" id="chkLookup">Cargar partida</button></div>
+        <div style="align-self:flex-end;"><button class="primary" id="chkGenerate">Generar cheque</button></div>
+      </div>
+      <div id="chkPurchaseInfo" class="muted">Ingrese un ID de partida para precargar datos.</div>
+    </div>
+
+    <div class="card section" id="checksHistoryCard" style="display:none;">
+      <h3>Historial de cheques</h3>
+      <div id="chkHistory" class="muted">Sin cheques.</div>
+    </div>
+
+    <div class="card section" id="cashDepositCard" style="display:none;">
+      <h3>Depósito de cierre</h3>
+      <div class="row">
+        <div><label>ID cierre</label><input id="depCierreId" type="number" min="1" placeholder="ID de cierre"></div>
+        <div><label>Cuenta bancaria</label><select id="depBank"></select></div>
+        <div><label>Monto</label><input id="depAmount" type="number" step="0.01"></div>
+      </div>
+      <div class="row">
+        <div><label>No. depósito</label><input id="depNumber" placeholder="Referencia o número"></div>
+        <div><label>Fecha</label><input id="depFecha" type="date"></div>
+        <div><label>Nota</label><input id="depRef" placeholder="Nota opcional"></div>
+        <div><label>Contracuenta (id) opcional</label><input id="depContra" placeholder="ID cuenta contable"></div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end;">
+        <button class="primary" id="depSubmit">Registrar depósito</button>
+        <button class="secondary" id="depLoad">Cargar cierres</button>
+      </div>
+      <div id="depMsg" class="muted" style="margin-top:8px;">Complete los datos y registre.</div>
+      <div id="depCierres" class="muted" style="margin-top:10px;">Sin datos.</div>
+    </div>
+  </div>
+
+<script>
+let ACCOUNTS = [];
+let LAST_ENTRIES = [];
+let CURRENT_ENTRY_ID = null;
+let BANK_ACCOUNTS = [];
+let DEPOSIT_CLOSURES = [];
+
+function logout(){
+  fetch('api/logout',{credentials:'include'}).finally(()=>location.href='login.html');
+}
+
+async function auth(){
+  const r = await fetch('api/auth_check',{credentials:'include'});
+  const d = await r.json();
+  if(!d.ok){ location.href='login.html'; return; }
+  const role = (d.user.rol||'').toLowerCase();
+  if(role!=='admin' && role!=='contabilidad' && role!=='accounting' && role!=='superadmin'){
+    alert('Acceso restringido al rol Contabilidad/Admin');
+    location.href='inventario.html';
+  }
+}
+
+function option(text, value){ const o=document.createElement('option'); o.textContent=text; o.value=value; return o; }
+function fillAccountSelectElement(sel, placeholder='Cuenta...'){
+  if(!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = placeholder ? `<option value="">${placeholder}</option>` : '';
+  ACCOUNTS.forEach(a=> sel.appendChild(option(`${a.code} - ${a.name}`, a.id)));
+  if(prev) sel.value = prev;
+}
+function setCheckAccountFromBank(){
+  const chkSel = document.getElementById('chkBank');
+  const accSel = document.getElementById('chkAccount');
+  if(!chkSel || !accSel) return;
+  const bankId = parseInt(chkSel.value||'0',10);
+  const bank = BANK_ACCOUNTS.find(b=> Number(b.id)===bankId);
+  if(bank && bank.account_id){
+    accSel.value = String(bank.account_id);
+  }
+}
+
+async function loadAccounts(){
+  const res = await fetch('api/accounts',{credentials:'include'});
+  if(!res.ok) throw new Error('Error cuentas');
+  ACCOUNTS = await res.json();
+  const list = document.getElementById('accountsList');
+  if(!ACCOUNTS.length){ list.innerHTML='Sin cuentas.'; }
+  else {
+    let html = '<table><thead><tr><th>Código</th><th>Nombre</th><th>Tipo</th></tr></thead><tbody>';
+    ACCOUNTS.forEach(a=>{ html += `<tr><td>${a.code}</td><td>${a.name}</td><td>${a.type}</td></tr>`; });
+    html += '</tbody></table>';
+    list.innerHTML = html;
+  }
+  const parentSel = document.getElementById('accParent');
+  parentSel.innerHTML = '<option value=\"\">--</option>';
+  ACCOUNTS.forEach(a=> parentSel.appendChild(option(`${a.code} - ${a.name}`, a.id)));
+  refreshLineAccountOptions();
+  fillAccountSelectElement(document.getElementById('chkAccount'));
+  fillAccountSelectElement(document.getElementById('bankConta'),'Cuenta contable banco...');
+}
+
+async function saveAccount(){
+  const payload = {
+    code: document.getElementById('accCode').value.trim(),
+    name: document.getElementById('accName').value.trim(),
+    type: document.getElementById('accType').value,
+    parent_id: document.getElementById('accParent').value || null,
+    currency: document.getElementById('accCurrency').value.trim() || 'GTQ',
+    level: parseInt(document.getElementById('accLevel').value||'1',10)
+  };
+  const res = await fetch('api/accounts',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=> ({}));
+  if(!res.ok || d.error){ alert(d.error||'Error al guardar cuenta'); return; }
+  await loadAccounts();
+  document.getElementById('accCode').value='';
+  document.getElementById('accName').value='';
+}
+
+function addLineRow(){
+  const tbody = document.querySelector('#jeLinesTable tbody');
+  const tr = document.createElement('tr');
+  tr.innerHTML = `
+    <td><select class="line-acc"><option value="">Cuenta...</option></select></td>
+    <td><input class="line-desc" /></td>
+    <td><input class="line-debe" type="number" step="0.01" value="0"></td>
+    <td><input class="line-haber" type="number" step="0.01" value="0"></td>
+    <td><button class="secondary line-del">X</button></td>`;
+  tbody.appendChild(tr);
+  refreshLineAccountOptions();
+}
+
+function refreshLineAccountOptions(){
+  document.querySelectorAll('.line-acc').forEach(sel=>{
+    const val = sel.value;
+    sel.innerHTML = '<option value=\"\">Cuenta...</option>';
+    ACCOUNTS.forEach(a=> sel.appendChild(option(`${a.code} - ${a.name}`, a.id)));
+    if(val) sel.value = val;
+  });
+}
+
+function recalcTotals(){
+  let debe=0, haber=0;
+  document.querySelectorAll('.line-debe').forEach(i=>{ debe += parseFloat(i.value||0); });
+  document.querySelectorAll('.line-haber').forEach(i=>{ haber += parseFloat(i.value||0); });
+  document.getElementById('totDebe').value = debe.toFixed(2);
+  document.getElementById('totHaber').value = haber.toFixed(2);
+}
+
+async function saveJournalEntry(){
+  const fecha = document.getElementById('jeFecha').value;
+  const desc = document.getElementById('jeDesc').value;
+  const id = document.getElementById('jeId').value ? parseInt(document.getElementById('jeId').value,10) : null;
+  const lines=[];
+  document.querySelectorAll('#jeLinesTable tbody tr').forEach(tr=>{
+    const acc = tr.querySelector('.line-acc').value;
+    const debe = parseFloat(tr.querySelector('.line-debe').value||0);
+    const haber = parseFloat(tr.querySelector('.line-haber').value||0);
+    if(!acc || (!debe && !haber)) return;
+    lines.push({account_id:parseInt(acc,10), descripcion: tr.querySelector('.line-desc').value, debe, haber});
+  });
+  if(!fecha || !lines.length){ alert('Fecha y líneas son obligatorias'); return; }
+  const totD = lines.reduce((s,l)=>s+Number(l.debe||0),0);
+  const totH = lines.reduce((s,l)=>s+Number(l.haber||0),0);
+  if(Math.abs(totD - totH) > 0.001){ alert('La partida no cuadra'); return; }
+  const payload = { fecha, descripcion:desc, lines };
+  const method = id ? 'PUT' : 'POST';
+  const url = id ? `api/journal_entries?id=${id}` : 'api/journal_entries';
+  const res = await fetch(url,{method,credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=> ({}));
+  if(!res.ok || d.error){ alert(d.error||'Error al guardar partida'); return; }
+  document.getElementById('jeMsg').innerText = `Partida ${id ? 'actualizada' : 'creada'} #${d.id}`;
+  CURRENT_ENTRY_ID = null;
+  document.getElementById('jeId').value = '';
+  await loadEntries();
+  await loadHistory();
+  window.open(`api/journal_pdf?id=${encodeURIComponent(d.id)}`,'_blank');
+  clearJournalForm();
+}
+
+async function loadEntries(){
+  const res = await fetch('api/journal_entries',{credentials:'include'});
+  const list = document.getElementById('jeList');
+  if(!res.ok){ if(list) list.innerText='Error al cargar'; return; }
+  LAST_ENTRIES = await res.json();
+}
+
+function formatMoney(v){
+  const num = Number(v||0);
+  return 'Q'+num.toLocaleString('es-GT',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+function humanRange(from, to){
+  if(from && to) return `Del ${from} al ${to}`;
+  if(from) return `Desde ${from}`;
+  if(to) return `Hasta ${to}`;
+  return '';
+}
+
+function renderLineList(lines){
+  if(!lines || !lines.length){
+    return '<div class="fs-row muted"><span class="label">Sin cuentas</span><span>--</span></div>';
+  }
+  return lines.map(l=>{
+    const desc = l.name ? ` ${l.name}` : '';
+    const amount = formatMoney(l.neto ?? l.saldo ?? 0);
+    return `<div class="fs-row"><span class="label">${l.code||''}${desc}</span><span>${amount}</span></div>`;
+  }).join('');
+}
+
+function renderTrialBalance(data, period){
+  const rows = Array.isArray(data) ? data : [];
+  const out = document.createElement('div');
+  out.className = 'fs-card';
+  let totDebe=0, totHaber=0, totSaldo=0;
+  rows.forEach(r=>{
+    totDebe += Number(r.debe||0);
+    totHaber += Number(r.haber||0);
+    totSaldo += Number(r.neto ?? r.saldo ?? 0);
+  });
+  let html = `<div class="fs-header"><div class="fs-title">BALANZA DE COMPROBACIÓN</div>`;
+  if(period) html += `<div class="fs-period">${period}</div>`;
+  html += `</div><div class="tbl-clean"><table><thead><tr><th>Código</th><th>Cuenta</th><th>Debe</th><th>Haber</th><th>Saldo</th></tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const net = Number(r.neto ?? r.saldo ?? 0);
+    html += `<tr>
+      <td>${r.code||''}</td>
+      <td>${r.name||''}</td>
+      <td style="text-align:right;">${formatMoney(r.debe||0)}</td>
+      <td style="text-align:right;">${formatMoney(r.haber||0)}</td>
+      <td style="text-align:right;">${formatMoney(net)}</td>
+    </tr>`;
+  });
+  html += `</tbody><tfoot><tr>
+    <td colspan="2">Totales</td>
+    <td style="text-align:right;">${formatMoney(totDebe)}</td>
+    <td style="text-align:right;">${formatMoney(totHaber)}</td>
+    <td style="text-align:right;">${formatMoney(totSaldo)}</td>
+  </tr></tfoot></table></div>`;
+  out.innerHTML = html;
+  return out.outerHTML;
+}
+
+function renderBalanceGeneral(data, period){
+  const assets = (data.assets && data.assets.lines) ? data.assets.lines : [];
+  const liabilities = (data.liabilities && data.liabilities.lines) ? data.liabilities.lines : [];
+  const equity = (data.equity && data.equity.lines) ? data.equity.lines : [];
+  const totAct = Number(data.assets && data.assets.total || 0);
+  const totPas = Number(data.liabilities && data.liabilities.total || 0);
+  const totPat = Number(data.equity && data.equity.total || 0);
+  const diff = Number(data.diferencia || 0);
+  let html = `<div class="fs-card">
+    <div class="fs-header">
+      <div class="fs-title">BALANCE DE SITUACIÓN FINANCIERA</div>`;
+  if(period) html += `<div class="fs-period">${period}</div>`;
+  html += `</div>
+    <div class="fs-grid">
+      <div class="fs-column">
+        <div class="fs-col-title">ACTIVO</div>
+        ${renderLineList(assets)}
+        <div class="fs-total"><span>Total Activo</span><span>${formatMoney(totAct)}</span></div>
+      </div>
+      <div class="fs-column">
+        <div class="fs-col-title">PASIVO Y PATRIMONIO</div>
+        <div class="fs-group">
+          <div class="fs-group-title">Pasivo</div>
+          ${renderLineList(liabilities)}
+          <div class="fs-total"><span>Total Pasivo</span><span>${formatMoney(totPas)}</span></div>
+        </div>
+        <div class="fs-group">
+          <div class="fs-group-title">Capital contable</div>
+          ${renderLineList(equity)}
+          <div class="fs-total"><span>Total capital</span><span>${formatMoney(totPat)}</span></div>
+        </div>
+        <div class="fs-total"><span>Total pasivo y capital</span><span>${formatMoney(totPas + totPat)}</span></div>
+      </div>
+    </div>`;
+  if(Math.abs(diff) > 0.001){
+    html += `<div class="fs-highlight"><span>Diferencia</span><span>${formatMoney(diff)}</span></div>`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function renderEstadoResultados(data, period){
+  const incomes = (data.ingresos && data.ingresos.lines) ? data.ingresos.lines : [];
+  const expenses = (data.gastos && data.gastos.lines) ? data.gastos.lines : [];
+  const totIng = Number(data.ingresos && data.ingresos.total || 0);
+  const totGto = Number(data.gastos && data.gastos.total || 0);
+  const util = Number(data.utilidad || 0);
+  const label = util >= 0 ? 'Utilidad del período' : 'Pérdida del período';
+  let html = `<div class="fs-card">
+    <div class="fs-header">
+      <div class="fs-title">ESTADO DE RESULTADOS</div>`;
+  if(period) html += `<div class="fs-period">${period}</div>`;
+  html += `</div>
+    <div class="pl-section">
+      <div class="pl-title">Ingresos</div>
+      ${renderLineList(incomes)}
+      <div class="pl-total"><span>Total ingresos</span><span>${formatMoney(totIng)}</span></div>
+    </div>
+    <div class="pl-section">
+      <div class="pl-title">Gastos</div>
+      ${renderLineList(expenses)}
+      <div class="pl-total"><span>Total gastos</span><span>${formatMoney(totGto)}</span></div>
+    </div>
+    <div class="pl-result"><span>${label}</span><span>${formatMoney(util)}</span></div>
+  </div>`;
+  return html;
+}
+
+function renderFlujoEfectivo(data, period){
+  const rows = Array.isArray(data.movimientos) ? data.movimientos : [];
+  let html = `<div class="fs-card">
+    <div class="fs-header"><div class="fs-title">FLUJO DE EFECTIVO</div>`;
+  if(period) html += `<div class="fs-period">${period}</div>`;
+  html += `</div>
+    <div class="tbl-clean"><table><thead><tr><th>Tipo</th><th>Monto</th></tr></thead><tbody>`;
+  if(!rows.length){
+    html += `<tr><td colspan="2" style="text-align:center;" class="muted">Sin movimientos</td></tr>`;
+  }else{
+    rows.forEach(r=>{
+      html += `<tr><td>${r.tipo||''}</td><td style="text-align:right;">${formatMoney(r.total||0)}</td></tr>`;
+    });
+  }
+  html += `</tbody></table></div></div>`;
+  return html;
+}
+
+function renderReport(type, data, from, to){
+  const box = document.getElementById('repResult');
+  const period = humanRange(from, to);
+  if(!data){ box.innerText='Sin datos'; return; }
+  let html = '';
+  if(type === 'trial_balance') html = renderTrialBalance(data, period);
+  else if(type === 'balance_general') html = renderBalanceGeneral(data, period);
+  else if(type === 'estado_resultados') html = renderEstadoResultados(data, period);
+  else if(type === 'flujo_efectivo') html = renderFlujoEfectivo(data, period);
+  else html = '<div class="muted">Tipo de reporte no soportado.</div>';
+  box.innerHTML = html;
+}
+
+async function runReport(){
+  const type = document.getElementById('repType').value;
+  const from = document.getElementById('repFrom').value;
+  const to = document.getElementById('repTo').value;
+  const params = new URLSearchParams({type});
+  if(from) params.set('from',from);
+  if(to) params.set('to',to);
+  const res = await fetch('api/financial_reports?'+params.toString(),{credentials:'include'});
+  const out = document.getElementById('repResult');
+  const d = await res.json().catch(()=> null);
+  if(!res.ok || !d){ out.innerText = (d && d.error) ? d.error : 'Error'; return; }
+  renderReport(type, d, from, to);
+}
+
+function clearJournalForm(){
+  document.getElementById('jeId').value = '';
+  document.getElementById('jeDesc').value = '';
+  document.getElementById('jeFecha').value = '';
+  const tbody = document.querySelector('#jeLinesTable tbody');
+  tbody.innerHTML = '';
+  addLineRow(); addLineRow();
+  recalcTotals();
+}
+
+function fillJournalForm(entry){
+  document.getElementById('jeId').value = entry.id;
+  document.getElementById('jeFecha').value = entry.fecha || '';
+  document.getElementById('jeDesc').value = entry.descripcion || '';
+  const tbody = document.querySelector('#jeLinesTable tbody');
+  tbody.innerHTML = '';
+  (entry.lines || []).forEach(ln=>{
+    addLineRow();
+    const tr = tbody.lastElementChild;
+    tr.querySelector('.line-acc').value = ln.account_id;
+    tr.querySelector('.line-desc').value = ln.descripcion || '';
+    tr.querySelector('.line-debe').value = ln.debe;
+    tr.querySelector('.line-haber').value = ln.haber;
+  });
+  recalcTotals();
+}
+
+async function loadHistory(){
+  const from = document.getElementById('histFrom').value || '';
+  const to = document.getElementById('histTo').value || '';
+  const params = new URLSearchParams();
+  if(from) params.set('from', from);
+  if(to) params.set('to', to);
+  const url = 'api/journal_entries' + (params.toString() ? '?'+params.toString() : '');
+  const res = await fetch(url,{credentials:'include'});
+  const box = document.getElementById('historyTable');
+  if(!res.ok){ box.innerText='Error al cargar'; return; }
+  const rows = await res.json();
+  if(!rows.length){ box.innerText='Sin partidas registradas.'; return; }
+  let html = '<table><thead><tr><th>ID</th><th>Fecha</th><th>Descripción</th><th>Debe</th><th>Haber</th><th>Acciones</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += `<tr>
+      <td>${r.id}</td>
+      <td>${r.fecha||''}</td>
+      <td>${r.descripcion||''}</td>
+      <td>${Number(r.total_debe||0).toFixed(2)}</td>
+      <td>${Number(r.total_haber||0).toFixed(2)}</td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="secondary btn-pdf" data-id="${r.id}">PDF</button>
+        <button class="primary btn-edit" data-id="${r.id}">Editar</button>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+
+  box.querySelectorAll('.btn-pdf').forEach(btn=>{
+    btn.onclick = ()=> window.open(`api/journal_pdf?id=${btn.dataset.id}`,'_blank');
+  });
+  box.querySelectorAll('.btn-edit').forEach(btn=>{
+    btn.onclick = ()=>{
+      const id = parseInt(btn.dataset.id,10);
+      const entry = rows.find(e=>Number(e.id)===id);
+      if(!entry){ alert('Partida no encontrada'); return; }
+      fillJournalForm(entry);
+      document.querySelectorAll('.side button').forEach(b=>b.classList.remove('active'));
+      document.querySelector('.side button[data-section="journalCard"]').classList.add('active');
+      document.querySelectorAll('.section').forEach(sec=>{ sec.style.display = (sec.id==='journalCard') ? '' : 'none'; });
+    };
+  });
+}
+
+async function saveBankAccount(){
+  if(BANK_ACCOUNTS.length >= 3){ alert('Solo se permiten 3 cuentas bancarias'); return; }
+  const payload = {
+    name: document.getElementById('bankName').value.trim(),
+    bank: document.getElementById('bankBank').value.trim(),
+    number: document.getElementById('bankNumber').value.trim(),
+    account_id: document.getElementById('bankConta').value ? parseInt(document.getElementById('bankConta').value,10) : null
+  };
+  const res = await fetch('api/bank_accounts',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=> ({}));
+  if(!res.ok || d.error){ alert(d.error||'Error al guardar'); return; }
+  await loadBankAccounts();
+  document.getElementById('bankName').value='';
+  document.getElementById('bankBank').value='';
+  document.getElementById('bankNumber').value='';
+  document.getElementById('bankConta').value='';
+}
+
+async function loadBankAccounts(){
+  const res = await fetch('api/bank_accounts',{credentials:'include'});
+  const d = await res.json().catch(()=> []);
+  BANK_ACCOUNTS = Array.isArray(d) ? d : [];
+  const sel = document.getElementById('bankSelect');
+  const chkSel = document.getElementById('chkBank');
+  const depSel = document.getElementById('depBank');
+  if(sel){ sel.innerHTML = '<option value=\"\">Seleccione...</option>'; BANK_ACCOUNTS.forEach(b=> sel.appendChild(option(b.name, b.id))); }
+  if(chkSel){ chkSel.innerHTML = '<option value=\"\">Seleccione banco...</option>'; BANK_ACCOUNTS.forEach(b=> chkSel.appendChild(option(b.name, b.id))); }
+  if(depSel){ depSel.innerHTML = '<option value=\"\">Seleccione banco...</option>'; BANK_ACCOUNTS.forEach(b=> depSel.appendChild(option(b.name, b.id))); }
+  if(sel && !sel.value && BANK_ACCOUNTS.length){ sel.value = String(BANK_ACCOUNTS[0].id); }
+  if(chkSel && !chkSel.value && BANK_ACCOUNTS.length){ chkSel.value = String(BANK_ACCOUNTS[0].id); }
+  if(depSel && !depSel.value && BANK_ACCOUNTS.length){ depSel.value = String(BANK_ACCOUNTS[0].id); }
+  const limitMsg = document.getElementById('bankLimitMsg');
+  if(limitMsg){
+    limitMsg.textContent = BANK_ACCOUNTS.length >= 3 ? 'Límite alcanzado: máximo 3 cuentas bancarias.' : 'Puede registrar hasta 3 cuentas (máximo 3).';
+  }
+  const bankSaveBtn = document.getElementById('bankSave');
+  if(bankSaveBtn){ bankSaveBtn.disabled = BANK_ACCOUNTS.length >= 3; }
+  fillAccountSelectElement(document.getElementById('bankConta'),'Cuenta contable banco...');
+  setCheckAccountFromBank();
+  await loadBankMovements();
+}
+
+async function loadBankMovements(){
+  // Suprimido: no mostrar movimientos aquí porque se ven en Bancos
+  const box = document.getElementById('bankMovList');
+  if(box) box.innerText = 'Movimientos visibles en Bancos.';
+}
+
+async function saveBankMovement(){
+  const acc = document.getElementById('bankSelect').value;
+  const payload = {
+    bank_account_id: acc ? parseInt(acc,10) : null,
+    fecha: document.getElementById('bmFecha').value,
+    tipo: document.getElementById('bmTipo').value,
+    monto: parseFloat(document.getElementById('bmMonto').value||0),
+    referencia: document.getElementById('bmRef').value,
+    contracuenta_id: document.getElementById('bmContra').value ? parseInt(document.getElementById('bmContra').value,10) : null,
+    conciliado: document.getElementById('bmConciliado').value ? parseInt(document.getElementById('bmConciliado').value,10) : 0
+  };
+  if(!payload.bank_account_id || !payload.fecha || !payload.monto){ alert('Cuenta, fecha y monto son obligatorios'); return; }
+  const res = await fetch('api/bank_movements',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=> ({}));
+  if(!res.ok || d.error){ alert(d.error||'Error al guardar movimiento'); return; }
+  await loadBankMovements();
+}
+
+async function fetchEntryForCheck(){
+  const eid = parseInt(document.getElementById('chkEntryId').value||'0',10);
+  const box = document.getElementById('chkPurchaseInfo');
+  if(!eid){ box.innerText='Ingrese un ID de partida válido.'; return; }
+  const res = await fetch('api/journal_entries?id='+encodeURIComponent(eid),{credentials:'include'});
+  const rows = await res.json().catch(()=> null);
+  const entry = Array.isArray(rows) ? rows[0] : null;
+  if(!res.ok || !entry){ box.innerText = (entry && entry.error) ? entry.error : 'Partida no encontrada'; return; }
+  const total = Number(entry.total_debe || entry.total_haber || 0).toFixed(2);
+  box.innerText = `Partida ${eid} | Fecha: ${entry.fecha||''} | Total: Q${total} | Desc: ${entry.descripcion||''}`;
+  document.getElementById('chkAmount').value = total;
+  document.getElementById('chkDate').value = entry.fecha || new Date().toISOString().slice(0,10);
+  if(entry.descripcion) document.getElementById('chkPayTo').value = entry.descripcion;
+  if(entry.descripcion) document.getElementById('chkNote').value = entry.descripcion;
+}
+
+async function loadCheckHistory(){
+  const box = document.getElementById('chkHistory');
+  const res = await fetch('api/checks',{credentials:'include'});
+  const rows = await res.json().catch(()=> []);
+  if(!Array.isArray(rows) || !rows.length){ box.innerText='Sin cheques.'; return; }
+  let html = '<table><thead><tr><th>#</th><th>Compra</th><th>Banco</th><th>Cuenta</th><th>Monto</th><th>Fecha</th><th>Estado</th><th></th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += `<tr>
+      <td>${r.check_number||r.id}</td>
+      <td>${r.purchase_id||''}</td>
+      <td>${r.bank_name||''}</td>
+      <td>${(r.account_code||'') ? `${r.account_code} - ${r.account_name||''}` : ''}</td>
+      <td>Q${Number(r.amount||0).toFixed(2)}</td>
+      <td>${r.issue_date||''}</td>
+      <td>${r.status||''}</td>
+      <td><button class="secondary btn-check-pdf" data-id="${r.id}">PDF</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+  box.querySelectorAll('.btn-check-pdf').forEach(btn=>{
+    btn.onclick = ()=> window.open(`api/check_pdf?id=${btn.dataset.id}`,'_blank');
+  });
+}
+
+async function generateCheck(){
+  const eid = parseInt(document.getElementById('chkEntryId').value||'0',10);
+  const bankId = parseInt(document.getElementById('chkBank').value||'0',10);
+  const accId = parseInt(document.getElementById('chkAccount').value||'0',10);
+  const amount = parseFloat(document.getElementById('chkAmount').value||'0');
+  const issueDate = document.getElementById('chkDate').value || new Date().toISOString().slice(0,10);
+  const payTo = (document.getElementById('chkPayTo').value||'').trim();
+  const note = (document.getElementById('chkNote').value||'').trim();
+  if(!eid || !bankId || !accId || amount<=0){ alert('Partida, cuenta bancaria, cuenta contable y monto son obligatorios'); return; }
+  const res = await fetch('api/checks',{
+    method:'POST',
+    credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({journal_entry_id:eid, bank_account_id:bankId, account_id:accId, amount, issue_date:issueDate, pay_to:payTo, note})
+  });
+  const d = await res.json().catch(()=> ({}));
+  if(!res.ok || d.error){ alert(d.error||'Error al generar cheque'); return; }
+  alert('Cheque generado');
+  await loadCheckHistory();
+  if(d.id){ window.open(`api/check_pdf?id=${encodeURIComponent(d.id)}`,'_blank'); }
+}
+
+async function loadCierresDep(){
+  const box = document.getElementById('depCierres');
+  if(!box) return;
+  box.innerText = 'Cargando...';
+  const res = await fetch('api/cash_deposit',{credentials:'include'});
+  const rows = await res.json().catch(()=> []);
+  if(!Array.isArray(rows) || !rows.length){ box.innerText='Sin cierres recientes.'; DEPOSIT_CLOSURES=[]; return; }
+  DEPOSIT_CLOSURES = rows;
+  let html = '<table><thead><tr><th>ID</th><th>Fecha</th><th>Monto</th><th>Estado</th><th>Depositado</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const monto = r.monto_final ?? r.monto_cierre ?? r.total_ventas ?? 0;
+    const fecha = r.fecha_cierre || '';
+    let estado = r.estado || '';
+    html += `<tr data-id="${r.id||''}">
+      <td>${r.id||''}</td>
+      <td>${fecha}</td>
+      <td>Q${Number(monto||0).toFixed(2)}</td>
+      <td>${estado||r.estado||''}</td>
+      <td>${(r.depositado||0) ? 'Sí' : 'No'}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+
+function fillClosureAmount(){
+  const cierreId = parseInt(document.getElementById('depCierreId').value||'0',10);
+  if(!DEPOSIT_CLOSURES.length){ loadCierresDep(); return; }
+  const closure = DEPOSIT_CLOSURES.find(c=>Number(c.id)===cierreId);
+  if(!closure) return;
+  const monto = closure.monto_final ?? closure.monto_cierre ?? closure.total_ventas ?? 0;
+  const depAmount = document.getElementById('depAmount');
+  if(depAmount){ depAmount.value = Number(monto||0).toFixed(2); depAmount.max = Number(monto||0).toFixed(2); }
+  const msg = document.getElementById('depMsg');
+  if(msg){ msg.innerText = `Monto del cierre: Q${Number(monto||0).toFixed(2)}`; }
+}
+
+async function submitDeposit(){
+  const msg = document.getElementById('depMsg');
+  const cierreId = parseInt(document.getElementById('depCierreId').value||'0',10);
+  const closure = DEPOSIT_CLOSURES.find(c=>Number(c.id)===cierreId);
+  const maxMonto = closure ? (closure.monto_final ?? closure.monto_cierre ?? closure.total_ventas ?? 0) : null;
+  const payload = {
+    cierre_id: cierreId,
+    bank_account_id: parseInt(document.getElementById('depBank').value||'0',10),
+    amount: parseFloat(document.getElementById('depAmount').value||'0'),
+    deposit_number: document.getElementById('depNumber').value || '',
+    fecha: document.getElementById('depFecha').value || new Date().toISOString().slice(0,10),
+    referencia: document.getElementById('depRef').value || '',
+    contracuenta_id: document.getElementById('depContra').value ? parseInt(document.getElementById('depContra').value,10) : null
+  };
+  if(!payload.cierre_id || !payload.bank_account_id || !payload.amount){
+    if(msg) msg.innerText = 'Cierre, banco y monto son obligatorios';
+    return;
+  }
+  if(maxMonto !== null && payload.amount > maxMonto){
+    if(msg) msg.innerText = `El monto no puede exceder Q${Number(maxMonto).toFixed(2)}`;
+    return;
+  }
+  const res = await fetch('api/cash_deposit',{
+    method:'POST',
+    credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  const d = await res.json().catch(()=>({ok:false,error:'Error desconocido'}));
+  if(!res.ok || !d.ok){
+    if(msg) msg.innerText = d.error || 'Error registrando depósito';
+    return;
+  }
+  if(msg) msg.innerText = d.message || `Depósito registrado. Mov banco #${d.bank_movement_id||''}`;
+  await loadCierresDep();
+}
+
+function bindEvents(){
+  document.getElementById('accSave').onclick = saveAccount;
+  document.getElementById('addLine').onclick = ()=>{ addLineRow(); recalcTotals(); };
+  document.getElementById('saveJE').onclick = saveJournalEntry;
+  document.getElementById('runReport').onclick = runReport;
+  document.getElementById('bankSave').onclick = saveBankAccount;
+  document.getElementById('bankSelect').onchange = loadBankMovements;
+  document.getElementById('bmSave').onclick = saveBankMovement;
+  const depLoad = document.getElementById('depLoad');
+  if(depLoad) depLoad.onclick = loadCierresDep;
+  const depSubmit = document.getElementById('depSubmit');
+  if(depSubmit) depSubmit.onclick = submitDeposit;
+  const depFecha = document.getElementById('depFecha');
+  if(depFecha) depFecha.value = new Date().toISOString().slice(0,10);
+  const depCierreInput = document.getElementById('depCierreId');
+  if(depCierreInput) depCierreInput.onchange = fillClosureAmount;
+  const chkLookup = document.getElementById('chkLookup');
+  if(chkLookup) chkLookup.onclick = fetchEntryForCheck;
+  const chkGenerate = document.getElementById('chkGenerate');
+  if(chkGenerate) chkGenerate.onclick = generateCheck;
+  const chkPurchaseInput = document.getElementById('chkEntryId');
+  if(chkPurchaseInput) chkPurchaseInput.onchange = fetchEntryForCheck;
+  const chkBankSel = document.getElementById('chkBank');
+  if(chkBankSel) chkBankSel.onchange = setCheckAccountFromBank;
+  document.querySelector('#jeLinesTable tbody').addEventListener('input', recalcTotals);
+  document.querySelector('#jeLinesTable tbody').addEventListener('click', e=>{
+    if(e.target && e.target.classList.contains('line-del')){
+      e.target.closest('tr').remove();
+      recalcTotals();
+    }
+  });
+
+  document.querySelectorAll('.side button[data-section]').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const target = btn.getAttribute('data-section');
+      document.querySelectorAll('.side button').forEach(b=>b.classList.remove('active'));
+      btn.classList.add('active');
+      document.querySelectorAll('.section').forEach(sec=>{
+        sec.style.display = (sec.id === target) ? '' : 'none';
+      });
+      if(target === 'bankCard'){ loadBankMovements(); }
+      if(target === 'journalCard') loadEntries();
+      if(target === 'historyCard') loadHistory();
+      if(target === 'reportCard') runReport();
+      if(target === 'checksCard'){ /* solo generación */ }
+      if(target === 'checksHistoryCard') loadCheckHistory();
+      if(target === 'cashDepositCard'){ loadCierresDep(); loadBankAccounts(); }
+    });
+  });
+
+  const histBtn = document.getElementById('histBuscar');
+  if(histBtn) histBtn.onclick = loadHistory;
+}
+
+(async function init(){
+  await auth();
+  bindEvents();
+  addLineRow(); addLineRow();
+  recalcTotals();
+  await loadAccounts();
+  await loadEntries();
+  await loadBankAccounts();
+  await loadHistory();
+  await loadCheckHistory();
+  const chkDate = document.getElementById('chkDate');
+  if(chkDate){ chkDate.value = new Date().toISOString().slice(0,10); }
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

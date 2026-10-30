@@ -1,0 +1,395 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Alertas de stock</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#223;}
+    .page{max-width:1240px;margin:20px auto;padding:0 16px;}
+    .card{background:#fff;border-radius:14px;box-shadow:0 8px 24px rgba(15,23,42,.08);padding:18px;margin-bottom:16px;}
+    .filters{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;align-items:end;}
+    .filters label{display:block;font-size:12px;color:#667085;margin-bottom:6px;font-weight:600;}
+    .filters input,.filters select{width:100%;padding:10px 12px;border:1px solid #d0d7e2;border-radius:10px;font-size:14px;background:#fff;}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center;}
+    .btn{padding:10px 14px;border:none;border-radius:10px;background:#1f5f8b;color:#fff;cursor:pointer;font-weight:600;}
+    .btn.secondary{background:#e8eef5;color:#1f3c56;}
+    .summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;}
+    .summary .tile{border-radius:14px;padding:14px 16px;color:#10243a;}
+    .summary .tile strong{display:block;font-size:26px;margin-top:6px;}
+    .summary .tile small{display:block;margin-top:6px;color:#55667d;font-size:12px;}
+    .tile.attention{background:linear-gradient(135deg,#dbeafe,#eff6ff);}
+    .tile.out{background:linear-gradient(135deg,#ffd3d8,#fff1f3);}
+    .tile.critical{background:linear-gradient(135deg,#fecaca,#fff1f2);}
+    .tile.low{background:linear-gradient(135deg,#fed7aa,#fff7ed);}
+    .tile.watch{background:linear-gradient(135deg,#fef3c7,#fffbeb);}
+    table{width:100%;border-collapse:collapse;}
+    th,td{padding:12px 10px;border-bottom:1px solid #edf2f7;text-align:left;vertical-align:top;}
+    th{font-size:12px;color:#667085;text-transform:uppercase;letter-spacing:.04em;}
+    td small{display:block;color:#667085;}
+    .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-size:12px;font-weight:700;}
+    .badge.out{background:#ffe1e6;color:#b42318;}
+    .badge.critical{background:#ffd6d6;color:#b42318;}
+    .badge.low{background:#ffe0c2;color:#a54900;}
+    .badge.watch{background:#fff4cc;color:#8a5a00;}
+    .badge.ok{background:#e7f6ec;color:#166534;}
+    .stock{font-weight:800;font-size:16px;}
+    .stock.out{color:#b42318;}
+    .stock.critical{color:#b42318;}
+    .stock.low{color:#a54900;}
+    .stock.watch{color:#8a5a00;}
+    .stock.ok{color:#166534;}
+    .muted{color:#667085;font-size:13px;}
+    .empty{padding:24px 12px;text-align:center;color:#667085;}
+    .hint{margin-top:10px;}
+    @media (max-width: 720px){
+      .page{padding:0 10px;}
+      th,td{padding:10px 8px;font-size:13px;}
+    }
+  </style>
+  <base href="/Pos/merged/">
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Alertas de stock</h1>
+    <div class="app-actions">
+      <button class="back-btn" type="button" onclick="location.href='inventario.html'">Volver a inventario</button>
+    </div>
+  </header>
+
+  <main class="page">
+    <section class="card">
+      <div class="filters">
+        <div>
+          <label for="branchFilter">Sucursal</label>
+          <select id="branchFilter">
+            <option value="">Todas las sucursales</option>
+          </select>
+        </div>
+        <div>
+          <label for="searchFilter">Buscar producto</label>
+          <input id="searchFilter" type="text" placeholder="Nombre, presentación, principio activo...">
+        </div>
+        <div>
+          <label for="stateFilter">Estado</label>
+          <select id="stateFilter">
+            <option value="all">Todos</option>
+            <option value="attention">Solo alertas</option>
+            <option value="out">Agotados</option>
+            <option value="critical">Críticos</option>
+            <option value="low">Bajos</option>
+            <option value="watch">Vigilancia</option>
+            <option value="ok">Normales</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button id="searchBtn" class="btn" type="button">Buscar</button>
+          <button id="clearBtn" class="btn secondary" type="button">Limpiar</button>
+        </div>
+      </div>
+      <div class="muted hint">
+        Umbrales fijos: agotado = 0, crítico = 1 a 5, bajo = 6 a 10 y vigilancia = 11 a 20 unidades.
+      </div>
+    </section>
+
+    <section class="summary">
+      <div class="tile attention">
+        <span>Productos con alerta</span>
+        <strong id="sumAttention">0</strong>
+        <small id="sumUnits">0 unidades comprometidas</small>
+      </div>
+      <div class="tile out">
+        <span>Agotados</span>
+        <strong id="sumOut">0</strong>
+      </div>
+      <div class="tile critical">
+        <span>Críticos</span>
+        <strong id="sumCritical">0</strong>
+      </div>
+      <div class="tile low">
+        <span>Bajos</span>
+        <strong id="sumLow">0</strong>
+      </div>
+      <div class="tile watch">
+        <span>Vigilancia</span>
+        <strong id="sumWatch">0</strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Alerta</th>
+              <th>Producto</th>
+              <th>Sucursal</th>
+              <th>Stock actual</th>
+              <th>Total sistema</th>
+              <th>Precio</th>
+              <th>Vence</th>
+            </tr>
+          </thead>
+          <tbody id="rows">
+            <tr><td colspan="7" class="empty">Cargando alertas de stock...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (function(){
+    let USER_ROLE = '';
+    let BRANCH_LABEL = 'Todas las sucursales';
+    const moneyFmt = new Intl.NumberFormat('es-GT', {
+      style:'currency',
+      currency:'GTQ',
+      minimumFractionDigits:2,
+      maximumFractionDigits:2
+    });
+
+    function normalizeRole(value){
+      const raw = String(value || '').trim().toLowerCase();
+      const map = {
+        admin: 'admin',
+        administrador: 'admin',
+        superadmin: 'superadmin'
+      };
+      return map[raw] || raw;
+    }
+
+    function fmtMoney(value){
+      return moneyFmt.format(Number(value || 0));
+    }
+
+    function normalizeProductType(value){
+      const raw = String(value || '').trim().toLowerCase();
+      if (raw === 'servicio') return 'servicio';
+      if (raw === 'combo') return 'combo';
+      return 'medicamento';
+    }
+
+    function isCoreInventoryBranchLabel(label){
+      const text = String(label || '').trim().toLowerCase();
+      return text.includes('principal') || text.includes('emergencia') || text.includes('hospital');
+    }
+
+    function fmtDate(value){
+      if(!value) return '--';
+      const d = new Date(value + 'T00:00:00');
+      if (Number.isNaN(d.getTime())) return value;
+      return new Intl.DateTimeFormat('es-GT', {
+        year:'numeric', month:'2-digit', day:'2-digit'
+      }).format(d);
+    }
+
+    async function fetchJSON(url, opts={}){
+      const resp = await fetch(url, { credentials:'include', cache:'no-store', ...opts });
+      const text = await resp.text();
+      let data = null;
+      try { data = JSON.parse(text); } catch(_) {}
+      return { ok: resp.ok, data, text, status: resp.status };
+    }
+
+    function resolveAlert(stockValue){
+      const stock = Number(stockValue || 0);
+      if (!Number.isFinite(stock) || stock <= 0) {
+        return { code: 'out', label: 'Agotado', priority: 4 };
+      }
+      if (stock <= 5) {
+        return { code: 'critical', label: 'Critico', priority: 3 };
+      }
+      if (stock <= 10) {
+        return { code: 'low', label: 'Bajo', priority: 2 };
+      }
+      if (stock <= 20) {
+        return { code: 'watch', label: 'Vigilancia', priority: 1 };
+      }
+      return { code: 'ok', label: 'Normal', priority: 0 };
+    }
+
+    function productPrice(item){
+      const nextLotPrice = Number(item.next_lot_price || 0);
+      if (Number.isFinite(nextLotPrice) && nextLotPrice > 0) return nextLotPrice;
+      return Number(item.precio_publico || 0);
+    }
+
+    function normalizeProducts(items, selectedBranchLabel){
+      return (Array.isArray(items) ? items : [])
+        .filter((item) => normalizeProductType(item?.tipo) !== 'servicio')
+        .map((item) => {
+          const stock = Number(item.stock != null ? item.stock : (item.stock_total != null ? item.stock_total : 0));
+          const totalStock = Number(item.stock_total != null ? item.stock_total : stock);
+          const alert = resolveAlert(stock);
+          return {
+            id: Number(item.id || 0),
+            nombre_comercial: item.nombre_comercial || '',
+            presentacion: item.presentacion || '',
+            principio_activo: item.principio_activo || '',
+            casa: item.casa || '',
+            expira: item.expira || '',
+            stock,
+            stock_total: totalStock,
+            precio_publico: productPrice(item),
+            branch_name: selectedBranchLabel,
+            alert
+          };
+        })
+        .sort((a, b) => {
+          if (b.alert.priority !== a.alert.priority) return b.alert.priority - a.alert.priority;
+          if (a.stock !== b.stock) return a.stock - b.stock;
+          return String(a.nombre_comercial || '').localeCompare(String(b.nombre_comercial || ''), 'es');
+        });
+    }
+
+    function filterProducts(items){
+      const state = document.getElementById('stateFilter').value;
+      if (state === 'all') return items;
+      if (state === 'attention') return items.filter((item) => item.alert.code !== 'ok');
+      return items.filter((item) => item.alert.code === state);
+    }
+
+    function renderSummary(items){
+      const attention = items.filter((item) => item.alert.code !== 'ok');
+      const countBy = (code) => attention.filter((item) => item.alert.code === code).length;
+      const units = attention.reduce((sum, item) => sum + Number(item.stock || 0), 0);
+      document.getElementById('sumAttention').textContent = attention.length;
+      document.getElementById('sumUnits').textContent = `${units} unidades comprometidas`;
+      document.getElementById('sumOut').textContent = countBy('out');
+      document.getElementById('sumCritical').textContent = countBy('critical');
+      document.getElementById('sumLow').textContent = countBy('low');
+      document.getElementById('sumWatch').textContent = countBy('watch');
+    }
+
+    function renderRows(items){
+      const tbody = document.getElementById('rows');
+      const state = document.getElementById('stateFilter').value;
+      tbody.innerHTML = '';
+      if (!items.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty">${
+          state === 'attention'
+            ? 'No hay productos en alerta con ese filtro.'
+            : 'No hay productos de inventario con ese filtro.'
+        }</td></tr>`;
+        return;
+      }
+      items.forEach((item) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><span class="badge ${item.alert.code}">${item.alert.label}</span></td>
+          <td>
+            <strong>${item.nombre_comercial || ''}</strong>
+            ${item.presentacion ? `<small>${item.presentacion}</small>` : ''}
+            ${item.principio_activo ? `<small>${item.principio_activo}</small>` : ''}
+            ${item.casa ? `<small>${item.casa}</small>` : ''}
+          </td>
+          <td>${item.branch_name || 'Todas las sucursales'}</td>
+          <td><span class="stock ${item.alert.code}">${item.stock}</span></td>
+          <td>${item.stock_total}</td>
+          <td>${fmtMoney(item.precio_publico || 0)}</td>
+          <td>${fmtDate(item.expira)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function loadBranches(){
+      const sel = document.getElementById('branchFilter');
+      const res = await fetchJSON('api/branches');
+      if (!res.ok || !Array.isArray(res.data)) return;
+      res.data.forEach((branch) => {
+        const opt = document.createElement('option');
+        opt.value = branch.id;
+        opt.textContent = branch.name;
+        sel.appendChild(opt);
+      });
+    }
+
+    async function loadData(){
+      const branchId = document.getElementById('branchFilter').value;
+      const q = document.getElementById('searchFilter').value.trim();
+      const params = new URLSearchParams();
+      if (branchId) {
+        params.set('branch_id', branchId);
+        BRANCH_LABEL = document.getElementById('branchFilter').selectedOptions[0]?.textContent || 'Sucursal';
+      } else {
+        BRANCH_LABEL = 'Todas las sucursales';
+      }
+      if (!branchId || isCoreInventoryBranchLabel(BRANCH_LABEL)) {
+        params.set('branch_scope', 'core_inventory');
+      }
+      if (q) params.set('q', q);
+
+      const tbody = document.getElementById('rows');
+      tbody.innerHTML = '<tr><td colspan="7" class="empty">Cargando alertas de stock...</td></tr>';
+      const res = await fetchJSON(`api/productos?${params.toString()}`);
+      if (!res.ok || !Array.isArray(res.data)) {
+        tbody.innerHTML = `<tr><td colspan="7" class="empty">${res.data?.error || 'Error al cargar alertas de stock.'}</td></tr>`;
+        renderSummary([]);
+        return;
+      }
+
+      const normalized = normalizeProducts(res.data, BRANCH_LABEL);
+      renderSummary(normalized);
+      renderRows(filterProducts(normalized));
+    }
+
+    async function authCheck(){
+      const res = await fetchJSON('api/auth_check');
+      if (!res.ok || !res.data?.ok) {
+        location.href = 'login.html';
+        return false;
+      }
+      USER_ROLE = normalizeRole(res.data.user?.rol || res.data.user?.role || '');
+      if (!['admin', 'superadmin'].includes(USER_ROLE)) {
+        alert('Acceso restringido');
+        location.href = 'inventario.html';
+        return false;
+      }
+      return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!(await authCheck())) return;
+      await loadBranches();
+      await loadData();
+      document.getElementById('searchBtn').addEventListener('click', loadData);
+      document.getElementById('clearBtn').addEventListener('click', async () => {
+        document.getElementById('branchFilter').value = '';
+        document.getElementById('searchFilter').value = '';
+        document.getElementById('stateFilter').value = 'all';
+        await loadData();
+      });
+      document.getElementById('searchFilter').addEventListener('keydown', async (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          await loadData();
+        }
+      });
+      document.getElementById('branchFilter').addEventListener('change', loadData);
+      document.getElementById('stateFilter').addEventListener('change', loadData);
+    });
+  })();
+  </script>
+  <script src="js/profile.js"></script>
+  <div id="profileModal" class="modal" style="display:none;">
+    <div class="box" style="max-width:420px;">
+      <h3 style="margin-top:0;">Perfil</h3>
+      <div style="display:flex;gap:14px;align-items:center;">
+        <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+        <div>
+          <div style="font-weight:700;" data-profile-name></div>
+          <div class="muted" data-profile-username></div>
+          <div class="muted">Rol: <span data-profile-role></span></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+        <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+      </div>
+    </div>
+  </div>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

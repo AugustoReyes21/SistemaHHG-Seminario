@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="css/style.css">  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Médico - Consulta Externa</title>
+  <style>
+    :root{
+      --accent:#047857;
+      --bg:#f5f6fb;
+      --text:#1f2937;
+      --muted:#6b7280;
+    }
+    body{
+      margin:0;
+      font-family:'Segoe UI',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      min-height:100vh;
+    }
+    .sidebar{
+      width:220px;
+      background:#fff;
+      color:var(--accent);
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      padding:16px 12px;
+      border-right:1px solid #e5e7eb;
+    }
+    .sidebar h3{margin:0 0 10px 0;font-size:18px;color:var(--accent);}
+    .nav-link{
+      color:var(--accent);
+      text-decoration:none;
+      padding:10px 12px;
+      border-radius:8px;
+      display:block;
+      font-weight:600;
+    }
+    .nav-link:hover,.nav-link.active{background:#e9eef7;}
+    .content{flex:1;display:flex;flex-direction:column;}
+    header{
+      background:var(--accent);
+      color:#fff;
+      padding:12px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    header h2{margin:0;font-size:18px;}
+    header button{
+      background:#fff;
+      color:var(--accent);
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .container{max-width:1200px;margin:18px auto;padding:0 16px;width:100%;}
+    .grid{display:grid;grid-template-columns:1fr 400px;gap:16px;align-items:start;}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    label{font-weight:600;display:block;margin:6px 0 3px;}
+    input,textarea{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top;}
+    th{background:#f8fafc;}
+    button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;}
+    .muted{color:var(--muted);font-size:13px;}
+    .receta-remove{
+      background:#b91c1c;
+      color:#fff;
+      border:none;
+      padding:2px 8px;
+      border-radius:6px;
+      cursor:pointer;
+      margin-left:8px;
+      font-weight:700;
+    }
+    @media(max-width:1000px){
+      body{flex-direction:column;}
+      .sidebar{width:auto;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid #e5e7eb;}
+      .grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <aside class="sidebar" aria-label="Navegación consulta externa">
+    <h3>Consulta Externa</h3>
+    <a class="nav-link active" href="medico.html">Pacientes</a>
+    <a class="nav-link" href="historial_consultas.html">Historial</a>
+    <a class="nav-link" id="navEmergencia" href="emergencia.html" style="display:none;">Emergencia</a>
+    <a class="nav-link" id="navHosp" href="hospitalizacion.html" style="display:none;">Hospitalización</a>
+    <a class="nav-link" href="#" onclick="logout();return false;">Salir</a>
+  </aside>
+  <div class="content">
+    <header class="app-header">
+      <h2>Médico - Consulta Externa</h2>
+      
+    </header>
+    <main class="container">
+      <div class="grid">
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">Pacientes asignados</h3>
+          <div id="lista">Cargando...</div>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">Atender paciente</h3>
+          <div id="selPaciente" class="muted">Seleccione paciente</div>
+          <div id="signosBox" class="muted" style="font-size:12px;margin:6px 0;">Sin signos registrados.</div>
+          <label>Diagnóstico</label><textarea id="diag" rows="3"></textarea>
+          <h4>Receta</h4>
+          <div id="recetaList" class="muted">Sin medicamentos.</div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <div style="flex:1;min-width:150px;"><label>Medicamento</label><input id="medNombre"></div>
+            <div style="flex:1;min-width:120px;"><label>Dosis</label><input id="medDosis"></div>
+            <div style="flex:1;min-width:120px;"><label>Frecuencia</label><input id="medFreq"></div>
+            <div style="flex:1;min-width:120px;"><label>Duración</label><input id="medDur"></div>
+            <div style="align-self:flex-end;"><button type="button" onclick="addMed()">Agregar</button></div>
+          </div>
+          <div style="margin-top:10px;display:flex;gap:8px;justify-content:flex-end;">
+            <button type="button" id="btnGuardar">Guardar y cerrar</button>
+            <button type="button" id="btnReceta">Imprimir receta</button>
+          </div>
+          <div id="msg" style="margin-top:8px;font-size:13px;"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+<script>
+let CURRENT_ID=null;
+let RECETA=[];
+let MEDICO_LABEL='';
+let CONSULTAS_CACHE=[];
+let USER_ROLE='';
+let CURRENT_PACIENTE='';
+async function logout(){ try{await fetch('api/logout',{credentials:'include'});}catch(e){} location.href='login.html'; }
+async function auth(){
+  const r=await fetch('api/auth_check',{credentials:'include'});
+  const d=await r.json().catch(()=>({ok:false}));
+  const normalizeRole = (v)=>{
+    v = (v||'').toLowerCase();
+    v = v.normalize ? v.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : v;
+    return v.replace(/\s+/g,'').replace(/_/g,'');
+  };
+  const role = normalizeRole(d.user.rol||'');
+  if(!d.ok || !['direccionmedica','consultorio2','consultorio3','superadmin'].includes(role)){
+    alert('Acceso restringido');
+    location.href='login.html';
+    return;
+  }
+  const uname = (d.user.nombre_medico || d.user.username || '').toLowerCase();
+  if(uname.includes('axel') || role==='direccionmedica') MEDICO_LABEL='Dr. Axel';
+  else if(uname.includes('yorentine') || role==='consultorio2') MEDICO_LABEL='Dr. Yorentine';
+  else if(uname.includes('arias') || role==='consultorio3') MEDICO_LABEL='Dr. Arias';
+  else MEDICO_LABEL = d.user.nombre_medico || d.user.username || '';
+  USER_ROLE = role;
+  
+  if(USER_ROLE === 'direccionmedica' || USER_ROLE === 'consultorio2' || USER_ROLE === 'consultorio3'){
+    const navE = document.getElementById('navEmergencia');
+    const navH = document.getElementById('navHosp');
+    if(navE) navE.style.display = '';
+    if(navH) navH.style.display = '';
+  }
+  let c='';
+  if(MEDICO_LABEL==='Dr. Axel') c='Dirección Médica';
+  if(MEDICO_LABEL==='Dr. Yorentine') c='Consultorio2';
+  if(MEDICO_LABEL==='Dr. Arias') c='Consultorio3';
+  document.querySelector('header h2').innerText = c ? `Médico - ${MEDICO_LABEL} (${c})` : `Médico - ${MEDICO_LABEL}`;
+}
+async function cargar(){
+  const params = new URLSearchParams();
+  if(MEDICO_LABEL && USER_ROLE !== 'direccionmedica') params.set('medico', MEDICO_LABEL);
+  params.set('estado','preconsulta');
+  const res = await fetch('api/consultas?'+params.toString(),{credentials:'include'});
+  const rows = await res.json().catch(()=>[]);
+  CONSULTAS_CACHE = Array.isArray(rows) ? rows : [];
+  const box = document.getElementById('lista');
+  if(!CONSULTAS_CACHE.length){ box.innerText='Sin pacientes en cola'; return; }
+  let html = '<table><thead><tr><th></th><th>Paciente</th><th>Motivo</th><th>Estado</th></tr></thead><tbody>';
+  CONSULTAS_CACHE.forEach(r=>{
+    html += `<tr><td><button onclick="sel(${r.id},'${r.paciente||''}')">Atender</button></td><td>${r.paciente||''}</td><td>${r.motivo||''}</td><td>${r.estado||''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+window.sel = (id,nombre)=>{
+  CURRENT_ID = id;
+  RECETA = [];
+  CURRENT_PACIENTE = nombre || '';
+  const c = CONSULTAS_CACHE.find(x=> Number(x.id)===Number(id));
+  renderSignos(c ? c.signos : null);
+  document.getElementById('selPaciente').innerText = `Paciente: ${nombre} (#${id})`;
+  document.getElementById('recetaList').innerText = 'Sin medicamentos.';
+  document.getElementById('diag').value = '';
+};
+function renderSignos(signos){
+  const box = document.getElementById('signosBox');
+  if(!signos){
+    box.innerText = 'Sin signos registrados.';
+    return;
+  }
+  let s = typeof signos === 'string' ? (()=>{ try{return JSON.parse(signos);}catch(e){return {};}})() : signos;
+  const fields = [];
+  if(s.peso) fields.push(`Peso: ${s.peso} kg`);
+  if(s.talla) fields.push(`Talla: ${s.talla} m`);
+  if(s.temp) fields.push(`Temp: ${s.temp} °C`);
+  if(s.presion) fields.push(`PA: ${s.presion}`);
+  if(s.fc) fields.push(`FC: ${s.fc}`);
+  if(s.fr) fields.push(`FR: ${s.fr}`);
+  if(s.saturacion) fields.push(`Sat: ${s.saturacion}%`);
+  if(s.otros) fields.push(`Otros: ${s.otros}`);
+  box.innerText = fields.length ? fields.join(' | ') : 'Sin signos registrados.';
+}
+function renderReceta(){
+  const box = document.getElementById('recetaList');
+  if(!RECETA.length){ box.innerText='Sin medicamentos.'; return; }
+  let html = '<ul>';
+  RECETA.forEach((m,idx)=>{ html += `<li style="display:flex;justify-content:space-between;align-items:center;gap:8px;">`+
+    `<span>${m.medicamento} (${m.dosis}) ${m.frecuencia} x ${m.duracion}</span>`+
+    `<button type="button" class="receta-remove" onclick="delMed(${idx});return false;">×</button>`+
+    `</li>`; });
+  html += '</ul>';
+  box.innerHTML = html;
+}
+window.addMed = ()=>{
+  const med = (document.getElementById('medNombre').value||'').trim();
+  if(!med){ alert('Medicamento requerido'); return; }
+  RECETA.push({
+    medicamento: med,
+    dosis: document.getElementById('medDosis').value,
+    frecuencia: document.getElementById('medFreq').value,
+    duracion: document.getElementById('medDur').value
+  });
+  ['medNombre','medDosis','medFreq','medDur'].forEach(id=>document.getElementById(id).value='');
+  renderReceta();
+};
+window.delMed = (idx)=>{ RECETA.splice(idx,1); renderReceta(); };
+async function guardar(){
+  if(!CURRENT_ID){ alert('Seleccione paciente'); return; }
+  const diag = document.getElementById('diag').value;
+  const payload = { id: CURRENT_ID, diagnostico: diag, receta: RECETA };
+  const res = await fetch('api/consultas',{method:'PUT',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=>({ok:false}));
+  const msg = document.getElementById('msg');
+  if(!res.ok || !d.ok){ msg.innerText = d.error||'Error'; msg.style.color='#b91c1c'; return; }
+  msg.innerText = 'Consulta cerrada';
+  msg.style.color='#047857';
+  CURRENT_ID=null; RECETA=[]; document.getElementById('diag').value=''; renderReceta(); document.getElementById('selPaciente').innerText='Seleccione paciente';
+  cargar();
+}
+async function imprimir(){
+  if(!CURRENT_ID){ alert('Seleccione paciente'); return; }
+  const diagVal = document.getElementById('diag').value || '';
+  const payload = {
+    id: CURRENT_ID,
+    diagnostico: diagVal,
+    receta: RECETA,
+    paciente: CURRENT_PACIENTE,
+    medico: MEDICO_LABEL
+  };
+  
+  const res = await fetch('api/receta_pdf?draft=1&id='+CURRENT_ID,{
+    method:'POST',
+    credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if(res.ok){
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    window.open(url, '_blank');
+    setTimeout(()=>URL.revokeObjectURL(url), 30000);
+  } else {
+    alert('No se pudo generar la receta.'); 
+  }
+}
+(async function(){
+  await auth();
+  document.getElementById('btnGuardar').onclick = guardar;
+  document.getElementById('btnReceta').onclick = imprimir;
+  await cargar();
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

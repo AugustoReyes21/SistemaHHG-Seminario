@@ -1,0 +1,1313 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Inventario</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body class="app app-inventario app-bg-photo hide-legacy-actions">
+
+  <nav id="sideNav" class="side-nav" style="display:none;">
+    <ul id="sideNavList">
+    </ul>
+  </nav>
+
+  <header class="app-header">
+    <img src="https://hospitalhilariogalindo.org/wp-content/uploads/2024/12/logo_mc.png" alt="Logo">
+    <h1>Sistema-HHG</h1>
+    <div class="app-actions">
+      <button id="newServiceBtn" class="secondary" style="display:none;">Nuevo servicio</button>
+      <button id="newComboBtn" class="secondary" style="display:none;">Nuevo combo</button>
+      <button id="topMedicinesBtn" class="secondary" style="display:none;">Más vendidos</button>
+      <button id="backup" class="secondary">Backup</button>
+      <button id="backDirMedInv" class="secondary" style="display:none;" class="back-btn">Volver</button>
+      <button id="backEmergInv" class="secondary" style="display:none;">Volver a Emergencia</button>
+      
+    </div>
+  </header>
+
+  <div class="container">
+
+    <div class="controls card">
+      <input id="q" placeholder="Buscar productos..." type="search" />
+      <button id="buscar">Buscar</button>
+      <select id="inventoryBranchSelect">
+        <option value="">Sucursal (cargando...)</option>
+      </select>
+    </div>
+
+    <div id="inventoryTypeTabs" class="card" style="display:flex;gap:8px;flex-wrap:wrap;padding:12px;">
+      <button type="button" class="secondary inventory-tab-btn" data-type="medicamento">Medicamentos</button>
+      <button type="button" class="secondary inventory-tab-btn" data-type="servicio">Servicios</button>
+      <button type="button" class="secondary inventory-tab-btn" data-type="combo">Combos</button>
+    </div>
+
+    <div id="formSection" class="card" style="display:none;">
+      <h3 id="formTitle">Nuevo producto</h3>
+      <form id="prodForm">
+        <input id="productNameInput" name="nombre_comercial" placeholder="Nombre comercial" required>
+        <div id="productTypeRow" style="display:none;">
+          <label for="productTypeField" style="margin-top:8px;">Tipo</label>
+          <select name="tipo" id="productTypeField">
+            <option value="medicamento">Medicamento</option>
+            <option value="servicio">Servicio</option>
+            <option value="combo">Combo</option>
+          </select>
+        </div>
+        <div id="medicationMetaFields">
+          <input name="codigo_barra" placeholder="Código de barras">
+          <input name="presentacion" placeholder="Presentación">
+          <input name="principio_activo" placeholder="Principio activo">
+          <input name="casa" placeholder="Casa">
+          <input name="expira" type="date" placeholder="Fecha expiración">
+        </div>
+        <div id="inventoryStockFields">
+          <small style="color:#6b7280; font-size:13px;">Stock por unidad, blister o caja.</small>
+          <input name="stock" type="number" placeholder="Stock en unidades" value="0">
+          <input name="unidades_por_tableta" type="number" min="1" step="1" placeholder="Unidades por blister" value="1">
+          <input name="tabletas_por_caja" type="number" min="1" step="1" placeholder="Blisteres por caja" value="1">
+          <input name="lot_number" id="lotNumberField" placeholder="Número de lote">
+          <label for="lotExpiryField" style="margin-top:8px;">Vencimiento del lote</label>
+          <input name="expiry_date" id="lotExpiryField" type="date">
+          <small id="lotHint" style="color:#6b7280; font-size:13px;">Obligatorio al aumentar el stock.</small>
+          <input type="hidden" name="adjust_branch_stock" id="adjustBranchStockInput" value="">
+        </div>
+        <div id="comboFields" style="display:none;margin-top:8px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;">
+            <strong>Componentes del combo</strong>
+            <button type="button" id="addComboComponentBtn" class="addBtn" style="padding:6px 10px;">Agregar componente</button>
+          </div>
+          <div id="comboComponentsList" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;"></div>
+        </div>
+        <div id="medicationPriceFields">
+          <input id="costPriceInput" name="precio_costo" type="number" step="0.01" placeholder="Precio costo">
+          <input id="publicPriceInput" name="precio_publico" type="number" step="0.01" placeholder="Precio público">
+          <input name="precio_tableta" type="number" step="0.01" placeholder="Precio blister">
+          <input name="precio_unidad" type="number" step="0.01" placeholder="Precio unidad">
+        </div>
+        <input type="hidden" name="id" value="">
+        <div style="display:flex;gap:8px;margin-top:8px">
+          <button type="submit">Guardar</button>
+          <button type="button" id="cancel">Cancelar</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card" id="lista"></div>
+
+    <div id="purchaseModal" class="modal" aria-hidden="true">
+      <div class="box">
+        <h3>Registrar compra</h3>
+        <div style="display:flex; flex-direction:column; gap:8px;">
+          <label>Proveedor</label>
+          <input id="purchaseSupplier" type="text" placeholder="Nombre del proveedor" />
+          <label>Sucursal destino</label>
+          <select id="purchaseBranchSelect">
+            <option value="">Sucursal (cargando...)</option>
+          </select>
+          <label>Tipo de pago</label>
+          <select id="purchasePayType">
+            <option value="contado">Contado</option>
+            <option value="crédito">Crédito</option>
+          </select>
+          <label>Forma de pago</label>
+          <select id="purchasePayForm">
+            <option value="efectivo">Efectivo</option>
+            <option value="tarjeta">Tarjeta</option>
+            <option value="transferencia">Transferencia</option>
+          </select>
+          <div id="cuotasRow" style="display:none;">
+            <label>Cuotas</label>
+            <input id="purchaseCuotas" type="number" min="1" step="1" value="1" />
+          </div>
+          <label>Producto</label>
+          <select id="purchaseProduct"></select>
+          <label>Cantidad</label>
+          <input id="purchaseQty" type="number" min="1" step="1" value="1" />
+          <label>Precio unitario</label>
+          <input id="purchasePrice" type="number" min="0" step="0.01" />
+          <label>% de ganancia</label>
+          <input id="purchaseMargin" type="number" step="0.01" placeholder="Margen de ganancia" />
+          <label>Número de lote</label>
+          <input id="purchaseLote" type="text" />
+          <label>Fecha de vencimiento</label>
+          <input id="purchaseExpira" type="date" />
+          <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:10px;">
+            <button id="confirmPurchase" class="addBtn">Registrar</button>
+            <button id="cancelPurchase" class="btn">Cancelar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+<script>
+let USER_ROLE = '';
+let INVENTORY_BRANCH = null;
+let INVENTORY_SHOW_ALL = false;
+let INVENTORY_ACTIVE_TAB = 'medicamento';
+const INVENTORY_BRANCH_KEY = 'inventory_branch_id';
+const inventoryTypeTabs = document.getElementById('inventoryTypeTabs');
+const productNameInput = document.getElementById('productNameInput');
+const productTypeRow = document.getElementById('productTypeRow');
+const productTypeField = document.getElementById('productTypeField');
+const medicationMetaFields = document.getElementById('medicationMetaFields');
+const inventoryStockFields = document.getElementById('inventoryStockFields');
+const comboFields = document.getElementById('comboFields');
+const comboComponentsList = document.getElementById('comboComponentsList');
+const medicationPriceFields = document.getElementById('medicationPriceFields');
+const publicPriceInput = document.getElementById('publicPriceInput');
+const costPriceInput = document.getElementById('costPriceInput');
+const priceTabletaInput = document.querySelector('input[name="precio_tableta"]');
+const priceUnidadInput = document.querySelector('input[name="precio_unidad"]');
+let PRODUCT_CACHE = [];
+let PRODUCT_MASTER_CACHE = [];
+let COMBO_COMPONENT_SEQ = 0;
+const lotNumberField = document.getElementById('lotNumberField');
+const lotExpiryField = document.getElementById('lotExpiryField');
+const lotHint = document.getElementById('lotHint');
+const expiraField = document.querySelector('input[name="expira"]');
+const purchaseExpiraField = document.getElementById('purchaseExpira');
+
+function normalizeProductType(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'servicio') return 'servicio';
+  if (raw === 'combo') return 'combo';
+  return 'medicamento';
+}
+
+function normalizeFrontendRole(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'administrador') return 'admin';
+  return raw;
+}
+
+function userCanManageInventoryProducts() {
+  return ['admin', 'superadmin'].includes(normalizeFrontendRole(USER_ROLE));
+}
+
+function userCanViewInventoryCombos() {
+  const role = normalizeFrontendRole(USER_ROLE);
+  return ['admin', 'superadmin', 'cashiee', 'cashierh', 'enfermeria'].includes(role);
+}
+
+function getInventoryVisibleTypes() {
+  return userCanViewInventoryCombos()
+    ? ['medicamento', 'servicio', 'combo']
+    : ['medicamento', 'servicio'];
+}
+
+function getInventoryTabLabel(type) {
+  if (type === 'servicio') return 'Servicios';
+  if (type === 'combo') return 'Combos';
+  return 'Medicamentos';
+}
+
+function getInventoryItemsForActiveTab(items = []) {
+  if (!getInventoryVisibleTypes().includes(normalizeProductType(INVENTORY_ACTIVE_TAB))) {
+    INVENTORY_ACTIVE_TAB = 'medicamento';
+  }
+  const activeType = normalizeProductType(INVENTORY_ACTIVE_TAB);
+  return (items || []).filter((product) => normalizeProductType(product?.tipo) === activeType);
+}
+
+function refreshInventoryTabButtons(items = PRODUCT_CACHE) {
+  if (!inventoryTypeTabs) return;
+  const allItems = Array.isArray(items) ? items : [];
+  const visibleTypes = getInventoryVisibleTypes();
+  if (!visibleTypes.includes(normalizeProductType(INVENTORY_ACTIVE_TAB))) {
+    INVENTORY_ACTIVE_TAB = visibleTypes[0] || 'medicamento';
+  }
+  inventoryTypeTabs.querySelectorAll('.inventory-tab-btn').forEach((button) => {
+    const type = normalizeProductType(button.dataset.type || 'medicamento');
+    const visible = visibleTypes.includes(type);
+    button.style.display = visible ? '' : 'none';
+    if (!visible) return;
+    const count = allItems.filter((product) => normalizeProductType(product?.tipo) === type).length;
+    button.textContent = `${getInventoryTabLabel(type)} (${count})`;
+    const active = type === normalizeProductType(INVENTORY_ACTIVE_TAB);
+    button.style.background = active ? '#2563eb' : '';
+    button.style.color = active ? '#fff' : '';
+    button.style.boxShadow = active ? '0 10px 24px rgba(37,99,235,.22)' : '';
+  });
+}
+
+function setInventoryActiveTab(type) {
+  const nextType = normalizeProductType(type || 'medicamento');
+  INVENTORY_ACTIVE_TAB = getInventoryVisibleTypes().includes(nextType) ? nextType : 'medicamento';
+  refreshInventoryTabButtons(PRODUCT_CACHE);
+  renderProductos(PRODUCT_CACHE);
+}
+
+function getMedicamentoOptions() {
+  return PRODUCT_MASTER_CACHE.filter((product) => normalizeProductType(product.tipo) === 'medicamento');
+}
+
+function getComboComponentOptions() {
+  return PRODUCT_MASTER_CACHE.filter((product) => {
+    const type = normalizeProductType(product.tipo);
+    return type === 'medicamento' || type === 'servicio';
+  });
+}
+
+function getProductTypeLabel(type) {
+  return type === 'servicio' ? 'Servicio' : type === 'combo' ? 'Combo' : 'Medicamento';
+}
+
+function getProductOptionStockText(product) {
+  const type = normalizeProductType(product?.tipo);
+  if (type === 'servicio') return 'sin control de stock';
+  const stockValue = Number(product?.stock || 0);
+  return stockValue > 0 ? `stock ${formatStockValue(stockValue)}` : 'sin stock';
+}
+
+function comboComponentOptions(selectedId = '') {
+  const target = String(selectedId || '');
+  return getComboComponentOptions()
+    .map((product) => {
+      const selected = String(product.id) === target ? 'selected' : '';
+      const type = normalizeProductType(product.tipo);
+      return `<option value="${product.id}" ${selected}>${product.nombre_comercial} (${getProductTypeLabel(type)} · ${getProductOptionStockText(product)})</option>`;
+    })
+    .join('');
+}
+
+function refreshComboComponentSelects() {
+  if (!comboComponentsList) return;
+  comboComponentsList.querySelectorAll('select.combo-component-product').forEach((select) => {
+    const current = select.value || '';
+    select.innerHTML = `<option value="">Seleccione medicamento o servicio</option>${comboComponentOptions(current)}`;
+    if (current) select.value = current;
+  });
+}
+
+function addComboComponentRow(component = {}) {
+  if (!comboComponentsList) return;
+  const row = document.createElement('div');
+  row.className = 'combo-component-row';
+  row.dataset.rowId = String(++COMBO_COMPONENT_SEQ);
+  row.style.display = 'grid';
+  row.style.gridTemplateColumns = '1fr 120px auto';
+  row.style.gap = '8px';
+  row.style.alignItems = 'center';
+  row.innerHTML = `
+    <select class="combo-component-product">
+      <option value="">Seleccione medicamento o servicio</option>
+      ${comboComponentOptions(component.component_product_id || component.product_id || '')}
+    </select>
+    <input class="combo-component-qty" type="number" min="0.01" step="0.01" placeholder="Cantidad" value="${component.quantity || component.cantidad || 1}">
+    <button type="button" class="btn combo-component-remove">Quitar</button>
+  `;
+  comboComponentsList.appendChild(row);
+}
+
+function clearComboComponentRows() {
+  if (comboComponentsList) comboComponentsList.innerHTML = '';
+}
+
+function collectComboComponents() {
+  if (!comboComponentsList) return [];
+  return Array.from(comboComponentsList.querySelectorAll('.combo-component-row'))
+    .map((row) => {
+      const productId = Number(row.querySelector('.combo-component-product')?.value || 0);
+      const quantity = Number(row.querySelector('.combo-component-qty')?.value || 0);
+      if (!productId || !Number.isFinite(quantity) || quantity <= 0) return null;
+      return {
+        component_product_id: productId,
+        quantity
+      };
+    })
+    .filter(Boolean);
+}
+
+function comboHasMedication(components = []) {
+  return components.some((component) => {
+    const product = PRODUCT_MASTER_CACHE.find((item) => Number(item.id) === Number(component.component_product_id || 0));
+    return normalizeProductType(product?.tipo) === 'medicamento';
+  });
+}
+
+function syncProductTypeForm() {
+  const type = normalizeProductType(productTypeField?.value || 'medicamento');
+  const usesInventory = type === 'medicamento';
+  const isService = type === 'servicio';
+  const isCombo = type === 'combo';
+  if (productTypeRow) productTypeRow.style.display = 'none';
+  if (medicationMetaFields) medicationMetaFields.style.display = usesInventory ? '' : 'none';
+  if (inventoryStockFields) inventoryStockFields.style.display = usesInventory ? '' : 'none';
+  if (comboFields) comboFields.style.display = isCombo ? '' : 'none';
+  if (medicationPriceFields) medicationPriceFields.style.display = '';
+  const stockInput = document.querySelector('input[name="stock"]');
+  const unidadesInput = document.querySelector('input[name="unidades_por_tableta"]');
+  const tabletasInput = document.querySelector('input[name="tabletas_por_caja"]');
+  if (productNameInput) {
+    productNameInput.placeholder = isService
+      ? 'Nombre del servicio'
+      : isCombo
+        ? 'Nombre del combo'
+        : 'Nombre comercial';
+  }
+  if (publicPriceInput) {
+    publicPriceInput.placeholder = usesInventory ? 'Precio público' : 'Precio';
+    publicPriceInput.style.display = '';
+    publicPriceInput.required = isService || isCombo;
+  }
+  if (costPriceInput) costPriceInput.style.display = usesInventory ? '' : 'none';
+  if (priceTabletaInput) priceTabletaInput.style.display = usesInventory ? '' : 'none';
+  if (priceUnidadInput) priceUnidadInput.style.display = usesInventory ? '' : 'none';
+  if (!usesInventory) {
+    if (stockInput) stockInput.value = '0';
+    if (lotNumberField) lotNumberField.value = '';
+    if (lotExpiryField) lotExpiryField.value = '';
+    if (expiraField) expiraField.value = '';
+    if (unidadesInput && !unidadesInput.value) unidadesInput.value = '1';
+    if (tabletasInput && !tabletasInput.value) tabletasInput.value = '1';
+    if (priceTabletaInput) priceTabletaInput.value = '';
+    if (priceUnidadInput) priceUnidadInput.value = '';
+    if (costPriceInput) costPriceInput.value = '';
+    resetAdjustStockFlag('0');
+  } else {
+    if (publicPriceInput) publicPriceInput.required = false;
+    updateAdjustmentMode();
+  }
+  if (!isCombo) {
+    clearComboComponentRows();
+  } else if (comboComponentsList && comboComponentsList.children.length === 0) {
+    addComboComponentRow();
+  }
+}
+
+function normalizeDateInput(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  let d = null;
+  let m = null;
+  let y = null;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    y = Number(s.slice(0, 4));
+    m = Number(s.slice(5, 7));
+    d = Number(s.slice(8, 10));
+  } else if (/^\d{4}[\\/.-]\d{2}[\\/.-]\d{2}$/.test(s)) {
+    const parts = s.split(/[\\/.-]/);
+    y = Number(parts[0]);
+    m = Number(parts[1]);
+    d = Number(parts[2]);
+  } else if (/^\d{2}[\\/.-]\d{2}[\\/.-]\d{2,4}$/.test(s)) {
+    const parts = s.split(/[\\/.-]/);
+    d = Number(parts[0]);
+    m = Number(parts[1]);
+    y = Number(parts[2]);
+  } else {
+    return s;
+  }
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return '';
+  if (y < 100) y = 2000 + y;
+  else if (y < 1000) y = 2000 + (y % 100);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return '';
+  return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function normalizeDateField(el) {
+  if (!el) return;
+  const v = normalizeDateInput(el.value);
+  if (v) el.value = v;
+}
+function resetAdjustStockFlag(value = '') {
+  const stockInput = document.querySelector('input[name="stock"]');
+  const flagInput = document.getElementById('adjustBranchStockInput');
+  if (stockInput) {
+    stockInput.dataset.original = value;
+  }
+  if (flagInput) {
+    flagInput.value = '';
+  }
+  ensureLotFieldsRequired(false);
+  if (lotNumberField) lotNumberField.value = '';
+  if (lotExpiryField) lotExpiryField.value = '';
+  updateAdjustmentMode();
+}
+
+function ensureLotFieldsRequired(flag) {
+  if (lotNumberField) {
+    lotNumberField.required = flag;
+  }
+  if (lotExpiryField) {
+    lotExpiryField.required = flag;
+  }
+  if (lotHint) {
+    lotHint.textContent = flag
+      ? 'Al aumentar el stock debes registrar el lote y su vencimiento.'
+      : 'Solo se requiere al aumentar el stock.';
+  }
+}
+
+function getStockDelta() {
+  const stockField = document.querySelector('input[name="stock"]');
+  if (!stockField) {
+    return { hasValue: false, delta: 0, originalValue: 0, currentValue: 0 };
+  }
+  const originalRaw = stockField.dataset.original || '';
+  const originalValue = originalRaw === '' ? 0 : Number(originalRaw);
+  const currentRaw = stockField.value || '';
+  if (currentRaw === '') {
+    return { hasValue: false, delta: 0, originalValue, currentValue: originalValue };
+  }
+  const currentValue = Number(currentRaw);
+  if (!Number.isFinite(currentValue)) {
+    return { hasValue: false, delta: 0, originalValue, currentValue: originalValue };
+  }
+  return { hasValue: true, delta: currentValue - originalValue, originalValue, currentValue };
+}
+
+function updateAdjustmentMode(){
+  const stockField = document.querySelector('input[name="stock"]');
+  const adjustInput = document.getElementById('adjustBranchStockInput');
+  if(!stockField || !adjustInput) return;
+  if (normalizeProductType(productTypeField?.value || 'medicamento') !== 'medicamento') {
+    adjustInput.value = '';
+    ensureLotFieldsRequired(false);
+    return;
+  }
+  const { hasValue, delta } = getStockDelta();
+  const changed = hasValue && delta !== 0;
+  const isIncrease = hasValue && delta > 0;
+  const lotProvided =
+    lotNumberField &&
+    lotExpiryField &&
+    lotNumberField.value.trim() &&
+    lotExpiryField.value;
+  adjustInput.value = isIncrease ? (lotProvided ? 'lot' : '1') : changed ? '0' : '';
+  ensureLotFieldsRequired(isIncrease);
+  if (isIncrease && lotExpiryField && lotExpiryField.value) {
+    if (expiraField) expiraField.value = lotExpiryField.value;
+  }
+}
+
+function initStockWatcher(){
+  const stockField = document.querySelector('input[name="stock"]');
+  if(!stockField) return;
+  if (productTypeField) {
+    productTypeField.addEventListener('change', syncProductTypeForm);
+  }
+  stockField.addEventListener('input', updateAdjustmentMode);
+  if(lotNumberField){
+    lotNumberField.addEventListener('input', updateAdjustmentMode);
+  }
+  if(lotExpiryField){
+    lotExpiryField.addEventListener('input', updateAdjustmentMode);
+    lotExpiryField.addEventListener('input', () => {
+      if (expiraField && lotExpiryField.value) {
+        expiraField.value = lotExpiryField.value;
+      }
+    });
+    lotExpiryField.addEventListener('blur', () => normalizeDateField(lotExpiryField));
+  }
+  if (expiraField) {
+    expiraField.addEventListener('input', () => {
+      if (lotExpiryField && expiraField.value) {
+        lotExpiryField.value = expiraField.value;
+      }
+    });
+    expiraField.addEventListener('blur', () => normalizeDateField(expiraField));
+  }
+  if (purchaseExpiraField) {
+    purchaseExpiraField.addEventListener('blur', () => normalizeDateField(purchaseExpiraField));
+  }
+  updateAdjustmentMode();
+  syncProductTypeForm();
+}
+
+function formatCurrency(v){ return 'Q'+parseFloat(v||0).toFixed(2); }
+
+function isCoreInventoryBranchLabel(label) {
+  const text = String(label || '').trim().toLowerCase();
+  return text.includes('principal') || text.includes('emergencia') || text.includes('hospital');
+}
+
+function setupSideNav(){
+  const nav = document.getElementById('sideNav');
+  const list = document.getElementById('sideNavList');
+  if(!nav || !list) return;
+  list.innerHTML = '';
+  let items = [];
+  if(USER_ROLE === 'admin' || USER_ROLE === 'administrador' || USER_ROLE === 'contabilidad'){
+    const baseItems = [
+      { text: 'Registrar compra', href: 'registrar_compra.html' },
+      { text: 'Historial de compras', href: 'historial_compras.html' },
+      { text: 'Traslado de productos', href: 'traslados.html' },
+      { text: 'Devoluciones proveedores', href: 'devoluciones_proveedores.html' },
+      { text: 'Devoluciones ventas', href: 'devoluciones_ventas.html' },
+      { text: 'Hist. Devoluciones venta', href: 'historial_devoluciones_ventas.html' },
+      { text: 'Kardex', href: 'kardex.html' },
+      { text: 'Bitácora', href: 'bitacora.html' },
+    ];
+    
+    items = (USER_ROLE === 'admin' || USER_ROLE === 'administrador')
+      ? [{ text: 'Usuarios', href: 'users.html' }, ...baseItems]
+      : baseItems;
+  } else if (USER_ROLE === 'farmacia' || USER_ROLE === 'cashier' || USER_ROLE === 'cajero') {
+    items = [
+      { text: 'Ventas', href: 'ventas.html' },
+      { text: 'Historial de ventas', href: 'historial_ventas.html' },
+      { text: 'Traslado de productos', href: 'traslados.html' }
+    ];
+  } else if (USER_ROLE === 'cashierh') {
+    items = [
+      { text: 'Hospitalización', href: 'hospitalizacion.html' },
+      { text: 'Historial de pacientes', href: 'historial_pacientes.html' }
+    ];
+  }
+  if(items.length > 0){
+    nav.style.display = 'block';
+    document.body.style.marginLeft = '200px';
+    items.forEach(item => {
+      const li = document.createElement('li');
+      li.style.padding = '10px 20px';
+      li.style.borderBottom = '1px solid #e0e0e0';
+      if(item.id){
+        const btn = document.createElement('button');
+        btn.textContent = item.text;
+        btn.style.background = 'none';
+        btn.style.border = 'none';
+        btn.style.color = '#2b5876';
+        btn.style.cursor = 'pointer';
+        btn.style.fontSize = '15px';
+        btn.style.width = '100%';
+        btn.style.textAlign = 'left';
+        btn.id = item.id;
+        btn.addEventListener('click', () => {
+        
+          if(item.id === 'nuevoProductoNav' || item.id === 'registrarProductoNav'){
+            if(typeof showProductForm === 'function'){
+              showProductForm();
+            }
+            return;
+          }
+          if(item.href){
+            location.href = item.href;
+            return;
+          }
+          const regBtn = document.getElementById('registrarCompraBtn');
+          if(regBtn) regBtn.click();
+        });
+        li.appendChild(btn);
+      } else {
+        const a = document.createElement('a');
+        a.textContent = item.text;
+        a.href = item.href || '#';
+        a.style.color = '#2b5876';
+        a.style.textDecoration = 'none';
+        a.style.display = 'block';
+        a.style.width = '100%';
+        li.appendChild(a);
+      }
+      list.appendChild(li);
+    });
+  }
+}
+
+async function apiGet(url){
+  const r = await fetch(url, { credentials:'include', cache: 'no-store' });
+  if(!r.ok) throw r;
+  return await r.json();
+}
+
+fetch('api/auth_check', { credentials:'include' })
+  .then(r => r.json())
+  .then(data => {
+    if(!data.ok) return location.href = 'login.html';
+    USER_ROLE = (data.user.rol || '').toLowerCase();
+    const params = new URLSearchParams(window.location.search);
+    const from = params.get('from');
+    if(USER_ROLE.includes('direccion') || USER_ROLE.includes('consultorio2') || USER_ROLE.includes('consultorio3')){
+      const backBtn = document.getElementById('backDirMedInv');
+      if(backBtn){
+        backBtn.style.display = '';
+        backBtn.onclick = ()=>{ location.href = 'hospitalizacion.html'; };
+      }
+    }
+    const backEmerg = document.getElementById('backEmergInv');
+    if(backEmerg && (USER_ROLE === 'cashiee' || from === 'emergencia')){
+      backEmerg.style.display = '';
+      backEmerg.onclick = ()=>{ location.href = 'ventas_emergencia.html'; };
+    }
+    const canUseBackup = USER_ROLE === 'admin' || USER_ROLE === 'administrador' || USER_ROLE === 'superadmin';
+    if(!canUseBackup){
+      const backupBtn = document.getElementById('backup');
+      if(backupBtn) backupBtn.style.display = 'none';
+    }
+    const canManageProducts = userCanManageInventoryProducts();
+    const newServiceBtn = document.getElementById('newServiceBtn');
+    const newComboBtn = document.getElementById('newComboBtn');
+    const topMedicinesBtn = document.getElementById('topMedicinesBtn');
+    if (newServiceBtn) newServiceBtn.style.display = canManageProducts ? '' : 'none';
+    if (newComboBtn) newComboBtn.style.display = canManageProducts ? '' : 'none';
+    if (topMedicinesBtn) {
+      topMedicinesBtn.style.display = canManageProducts ? '' : 'none';
+      topMedicinesBtn.onclick = () => {
+        location.href = 'medicamentos_mas_vendidos.html';
+      };
+    }
+    if(!canManageProducts){
+      const regCompraBtn = document.getElementById('registrarCompraBtn');
+      if(regCompraBtn) regCompraBtn.style.display = 'none';
+      const formSection = document.getElementById('formSection');
+      if (formSection) formSection.style.display = 'none';
+    }
+    if (!userCanViewInventoryCombos() && normalizeProductType(INVENTORY_ACTIVE_TAB) === 'combo') {
+      INVENTORY_ACTIVE_TAB = 'medicamento';
+    }
+    setupSideNav();
+    init();
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if(params.get('new') === '1'){
+        showProductForm();
+      }
+    } catch(e){}
+  });
+
+async function init(){
+  await loadBranches();
+  await loadProductos();
+  setupEvents();
+}
+
+async function loadBranches(){
+  try{
+    let data = await apiGet('api/branches');
+    if (USER_ROLE === 'cashier' || USER_ROLE === 'cajero') {
+      data = (data||[]).filter(b=>{
+        const name = (b.name||'').toLowerCase();
+        return name.includes('principal') || name.includes('emergencia') || name.includes('hospital');
+      });
+    }
+    const invSel = document.getElementById('inventoryBranchSelect');
+    const purchaseSel = document.getElementById('purchaseBranchSelect');
+    if (invSel) {
+      invSel.innerHTML = '';
+      if (data.length > 1) {
+        invSel.appendChild(new Option('Todas las sucursales', 'all'));
+      }
+      data.forEach(b=> invSel.appendChild(new Option(b.name,b.id)));
+      const storedRaw = localStorage.getItem(INVENTORY_BRANCH_KEY) || '';
+      if (storedRaw === 'all' && data.length > 1) {
+        INVENTORY_SHOW_ALL = true;
+        INVENTORY_BRANCH = null;
+        invSel.value = 'all';
+      } else {
+        const stored = parseInt(storedRaw, 10);
+        const defaultBranch = stored && data.some(b => Number(b.id) === stored) ? stored : (data[0] ? Number(data[0].id) : null);
+        INVENTORY_BRANCH = defaultBranch;
+        INVENTORY_SHOW_ALL = false;
+        if (INVENTORY_BRANCH) {
+          invSel.value = String(INVENTORY_BRANCH);
+          localStorage.setItem(INVENTORY_BRANCH_KEY, String(INVENTORY_BRANCH));
+        }
+      }
+    }
+    if (purchaseSel) {
+      purchaseSel.innerHTML = '<option value="">Seleccione...</option>';
+      data.forEach(b=> purchaseSel.appendChild(new Option(b.name,b.id)));
+    }
+    if (!data.length) {
+      alert('Sin sucursales disponibles para su rol.');
+      INVENTORY_BRANCH = null;
+      INVENTORY_SHOW_ALL = false;
+      loadProductos();
+      return;
+    }
+    loadProductos();
+  }catch{
+    console.warn("Sin sucursales");
+  }
+}
+
+async function fetchProductos(q=''){
+  const params = new URLSearchParams();
+  const branchSelect = document.getElementById('inventoryBranchSelect');
+  const selectedBranchLabel = branchSelect?.selectedOptions?.[0]?.textContent || '';
+  if (q) params.set('q', q);
+  if (!INVENTORY_SHOW_ALL && INVENTORY_BRANCH) {
+    params.set('branch_id', INVENTORY_BRANCH);
+  }
+  if (INVENTORY_SHOW_ALL || isCoreInventoryBranchLabel(selectedBranchLabel)) {
+    params.set('branch_scope', 'core_inventory');
+  }
+  const url = 'api/productos' + (params.toString() ? '?'+params.toString() : '');
+  const r = await fetch(url, { credentials:'include', cache: 'no-store' });
+  const payload = await r.json().catch(() => null);
+  if (!r.ok) {
+    const errorMessage =
+      (payload && (payload.error || payload.message)) ||
+      `HTTP ${r.status}`;
+    throw new Error(errorMessage);
+  }
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+async function loadProductos(q=''){
+  const list = document.getElementById('lista');
+  if (!INVENTORY_SHOW_ALL && !INVENTORY_BRANCH) {
+    list.innerHTML='Seleccione una sucursal para ver los productos.';
+    return;
+  }
+  list.innerHTML='Cargando...';
+  try{
+    const data = await fetchProductos(q);
+    const items = Array.isArray(data) ? data : (data && data.items ? data.items : []);
+    if (!q) PRODUCT_MASTER_CACHE = items;
+    if (!PRODUCT_MASTER_CACHE.length) PRODUCT_MASTER_CACHE = items;
+    PRODUCT_CACHE = items;
+    refreshComboComponentSelects();
+    populatePurchaseProducts();
+    refreshInventoryTabButtons(items);
+    renderProductos(items);
+  }catch(e){
+    const message = (e && e.message) ? e.message : 'Error al cargar';
+    list.innerHTML = `<div style="color:#b02;">Error al cargar: ${message}</div>`;
+    console.warn('Carga de productos fallida', e);
+  }
+}
+
+async function populatePurchaseProducts(){
+  const select = document.getElementById('purchaseProduct');
+  if(!select) return;
+  select.innerHTML = '';
+  try {
+    const source = PRODUCT_MASTER_CACHE.length ? PRODUCT_MASTER_CACHE : await fetchProductos().catch(() => []);
+    PRODUCT_MASTER_CACHE = Array.isArray(source) ? source : [];
+    getMedicamentoOptions().forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = `${p.nombre_comercial} (${getProductOptionStockText(p)})`;
+      select.appendChild(opt);
+    });
+  } catch (err) {
+    console.error('Error cargando productos para compra', err);
+  }
+}
+
+function showPurchaseModal(){
+  const m = document.getElementById('purchaseModal');
+  if(m){ m.style.display = 'flex'; m.setAttribute('aria-hidden','false'); }
+}
+function hidePurchaseModal(){
+  const m = document.getElementById('purchaseModal');
+  if(m){ m.style.display = 'none'; m.setAttribute('aria-hidden','true'); }
+}
+
+function formatStockValue(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return '0';
+  if (Number.isInteger(n)) return `${n}`;
+  return `${Math.round(n)}`;
+}
+
+function renderProductos(items){
+  const lista=document.getElementById('lista');
+  lista.innerHTML='';
+  const visibleTypes = getInventoryVisibleTypes();
+  const filteredItems = getInventoryItemsForActiveTab(items).filter((product) =>
+    visibleTypes.includes(normalizeProductType(product?.tipo))
+  );
+  if (!filteredItems.length) {
+    const typeLabel = getInventoryTabLabel(INVENTORY_ACTIVE_TAB);
+    lista.innerHTML = `<div style="color:#475569;">No hay ${typeLabel.toLowerCase()} para mostrar.</div>`;
+    return;
+  }
+  filteredItems.forEach(p=>{
+    const div=document.createElement('div');
+    div.className='product';
+    let adminBtns='';
+    if(userCanManageInventoryProducts()){
+      adminBtns = `
+        <button class="edit" data-id="${p.id}">Editar</button>
+        <button class="del" data-id="${p.id}">Eliminar</button>`;
+    }
+    const type = normalizeProductType(p.tipo);
+    const typeLabel = type === 'servicio' ? 'Servicio' : type === 'combo' ? 'Combo' : 'Medicamento';
+    const typeColor = type === 'servicio' ? '#0f766e' : type === 'combo' ? '#7c3aed' : '#1d4ed8';
+    const precioActual = (p.precio_venta_actual != null && !Number.isNaN(Number(p.precio_venta_actual)))
+      ? Number(p.precio_venta_actual)
+      : Number(p.precio_publico || 0);
+    const stockLabel = type === 'servicio'
+      ? 'Sin control de stock'
+      : `Stock: ${formatStockValue(p.stock)}${typeof p.stock_total !== 'undefined' && p.stock_total != null ? ` (Total ${formatStockValue(p.stock_total)})` : ''}`;
+    const extraDetail = type === 'combo'
+      ? `<small>${Array.isArray(p.combo_components) && p.combo_components.length ? p.combo_components.map(c => `${c.nombre_comercial || ('#' + c.component_product_id)} (${getProductTypeLabel(normalizeProductType(c.tipo))}) x${c.quantity}`).join(' · ') : 'Sin componentes configurados'}</small><br>${Array.isArray(p.stock_missing_components) && p.stock_missing_components.length ? `<small style="color:#b91c1c;">Sin stock por: ${p.stock_missing_components.join(', ')}</small><br>` : ''}`
+      : '';
+    const adminDetail = `
+        <small>${p.presentacion||''} - ${p.principio_activo||''}</small><br>
+        <small style="color:${type === 'servicio' ? '#0f766e' : p.stock<=0?'red':'green'}">${stockLabel}</small><br>
+        ${type === 'medicamento' ? `<small>Precios: unidad ${formatCurrency(p.precio_unidad || 0)} | blister ${formatCurrency(p.precio_tableta || 0)} | caja ${formatCurrency(precioActual)}</small><br>
+        <small>Conversión: ${Number(p.unidades_por_tableta || 1)} unidad(es)/blister · ${Number(p.tabletas_por_caja || 1)} blister(es)/caja</small><br>` : `<small>Precio público: ${formatCurrency(precioActual)}</small><br>`}
+        ${extraDetail}
+    `;
+    const readonlyDetail = `
+        ${type === 'medicamento'
+          ? `<small style="color:${p.stock<=0?'red':'green'}">${stockLabel}</small><br><small>Precios: unidad ${formatCurrency(p.precio_unidad || 0)} | blister ${formatCurrency(p.precio_tableta || 0)} | caja ${formatCurrency(precioActual)}</small><br>`
+          : type === 'servicio'
+            ? `<small>Precio público: ${formatCurrency(precioActual)}</small><br>`
+            : `<small style="color:${p.stock<=0?'red':'green'}">${stockLabel}</small><br><small>Precio público: ${formatCurrency(precioActual)}</small><br>${Array.isArray(p.stock_missing_components) && p.stock_missing_components.length ? `<small style="color:#b91c1c;">Sin stock por: ${p.stock_missing_components.join(', ')}</small><br>` : ''}`}
+    `;
+    div.innerHTML = `
+      <div>
+        <strong>${p.nombre_comercial}</strong> <small style="color:${typeColor};font-weight:700;">${typeLabel}</small><br>
+        ${userCanManageInventoryProducts() ? adminDetail : readonlyDetail}
+      </div>
+      <div>${adminBtns}</div>`;
+    lista.appendChild(div);
+  });
+}
+
+function setupEvents(){
+  if (inventoryTypeTabs) {
+    inventoryTypeTabs.addEventListener('click', (e) => {
+      const button = e.target.closest('.inventory-tab-btn');
+      if (!button) return;
+      setInventoryActiveTab(button.dataset.type || 'medicamento');
+    });
+  }
+  document.getElementById('buscar').onclick=()=>loadProductos(document.getElementById('q').value.trim());
+  document.getElementById('q').oninput=e=>loadProductos(e.target.value);
+  const invSel = document.getElementById('inventoryBranchSelect');
+  if (invSel) {
+    invSel.addEventListener('change', (e)=>{
+      const value = e.target.value || '';
+      if (value === 'all') {
+        INVENTORY_SHOW_ALL = true;
+        INVENTORY_BRANCH = null;
+        localStorage.setItem(INVENTORY_BRANCH_KEY, 'all');
+      } else {
+        INVENTORY_SHOW_ALL = false;
+        INVENTORY_BRANCH = value ? parseInt(value, 10) : null;
+        if (INVENTORY_BRANCH) {
+          localStorage.setItem(INVENTORY_BRANCH_KEY, String(INVENTORY_BRANCH));
+        }
+      }
+      loadProductos(document.getElementById('q').value.trim());
+    });
+  }
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.onclick = () => {
+      fetch('api/logout', { credentials:'include' }).finally(() => {
+        location.href = 'login.html';
+      });
+    };
+  }
+
+  document.getElementById('cancel').onclick=()=>document.getElementById('formSection').style.display='none';
+  const newServiceBtn = document.getElementById('newServiceBtn');
+  if (newServiceBtn) {
+    newServiceBtn.addEventListener('click', () => showServiceForm());
+  }
+  const newComboBtn = document.getElementById('newComboBtn');
+  if (newComboBtn) {
+    newComboBtn.addEventListener('click', () => showComboForm());
+  }
+  const addComboComponentBtn = document.getElementById('addComboComponentBtn');
+  if (addComboComponentBtn) {
+    addComboComponentBtn.addEventListener('click', () => addComboComponentRow());
+  }
+  if (comboComponentsList) {
+    comboComponentsList.addEventListener('click', (e) => {
+      const btn = e.target.closest('.combo-component-remove');
+      if (!btn) return;
+      const row = btn.closest('.combo-component-row');
+      if (row) row.remove();
+      if (normalizeProductType(productTypeField?.value || '') === 'combo' && comboComponentsList.children.length === 0) {
+        addComboComponentRow();
+      }
+    });
+  }
+
+  const regBtn = document.getElementById('registrarCompraBtn');
+  if(regBtn){
+    regBtn.onclick = () => {
+      location.href = 'registrar_compra.html';
+    };
+  }
+
+  const cancelPurchase = document.getElementById('cancelPurchase');
+  if (cancelPurchase) cancelPurchase.onclick = ()=> hidePurchaseModal();
+  const payTypeSel = document.getElementById('purchasePayType');
+  if(payTypeSel){
+    payTypeSel.addEventListener('change', () => {
+      const cuotasRow = document.getElementById('cuotasRow');
+      if(payTypeSel.value === 'crédito'){
+        cuotasRow.style.display = 'block';
+      } else {
+        cuotasRow.style.display = 'none';
+      }
+    });
+  }
+  document.getElementById('confirmPurchase').onclick = async ()=>{
+    const pid = parseInt(document.getElementById('purchaseProduct').value);
+    const qty = parseFloat(document.getElementById('purchaseQty').value || '0');
+    const price = parseFloat(document.getElementById('purchasePrice').value || '0');
+    const lote = document.getElementById('purchaseLote').value || '';
+    const purchaseExpiraEl = document.getElementById('purchaseExpira');
+    const exp = purchaseExpiraEl ? normalizeDateInput(purchaseExpiraEl.value) : '';
+    if (purchaseExpiraEl && exp) purchaseExpiraEl.value = exp;
+    const margin = parseFloat(document.getElementById('purchaseMargin').value || '0');
+    const supplierName = (document.getElementById('purchaseSupplier').value || '').trim();
+    const paymentType = document.getElementById('purchasePayType').value || 'contado';
+    const paymentForm = document.getElementById('purchasePayForm').value || 'efectivo';
+    const cuotasVal = parseInt(document.getElementById('purchaseCuotas').value || '0');
+    const branchSelect = document.getElementById('purchaseBranchSelect');
+    const branchId = branchSelect && branchSelect.value ? parseInt(branchSelect.value) : null;
+    if(!pid || qty <= 0 || price <= 0){
+      alert('Datos de compra inválidos');
+      return;
+    }
+    if (!branchId) {
+      alert('Seleccione la sucursal de destino');
+      return;
+    }
+    try{
+      const items = [{
+        product_id: pid,
+        quantity: qty,
+        unit_price: price,
+        profit_margin: margin,
+        lot_number: lote,
+        expiry_date: exp
+      }];
+      const payload = {
+        supplier_name: supplierName,
+        branch_id: branchId,
+        payment_type: paymentType,
+        payment_form: paymentForm,
+        cuotas: paymentType === 'crédito' ? cuotasVal : 0,
+        items: items
+      };
+
+      const res = await fetch('api/register_purchase',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if(res.ok && data.ok){
+        hidePurchaseModal();
+        document.getElementById('purchaseQty').value = '1';
+        document.getElementById('purchasePrice').value = '';
+        document.getElementById('purchaseLote').value = '';
+        document.getElementById('purchaseExpira').value = '';
+        document.getElementById('purchaseSupplier').value = '';
+        document.getElementById('purchaseMargin').value = '';
+        document.getElementById('purchasePayType').value = 'contado';
+        document.getElementById('purchasePayForm').value = 'efectivo';
+        document.getElementById('purchaseCuotas').value = '1';
+        document.getElementById('cuotasRow').style.display = 'none';
+        loadProductos();
+        alert('Compra registrada');
+      }else{
+        alert(data.error || 'Error al registrar compra');
+      }
+    }catch(err){ console.error(err); alert('Error al registrar compra'); }
+  };
+
+  document.getElementById('prodForm').onsubmit=async e=>{
+    e.preventDefault();
+    if (!userCanManageInventoryProducts()) {
+      alert('No autorizado para gestionar productos.');
+      return;
+    }
+    normalizeDateField(expiraField);
+    normalizeDateField(lotExpiryField);
+    const fd=new FormData(e.target);
+    const obj=Object.fromEntries(fd.entries());
+    const productType = normalizeProductType(obj.tipo || 'medicamento');
+    if (!INVENTORY_BRANCH) {
+      alert('Seleccione una sucursal para guardar el producto.');
+      return;
+    }
+    obj.branch_id = INVENTORY_BRANCH;
+    const stockDelta = getStockDelta();
+    if (productType === 'medicamento' && stockDelta.hasValue && stockDelta.delta > 0) {
+      if ((lotNumberField && !lotNumberField.value.trim()) || (lotExpiryField && !lotExpiryField.value)) {
+        alert('Aumentar stock requiere registrar número de lote y fecha de vencimiento.');
+        return;
+      }
+    }
+    if (productType === 'combo') {
+      obj.combo_components = collectComboComponents();
+      if (!obj.combo_components.length) {
+        alert('Debe agregar al menos un medicamento o servicio al combo.');
+        return;
+      }
+      if (!comboHasMedication(obj.combo_components)) {
+        alert('El combo debe incluir al menos un medicamento para controlar el stock.');
+        return;
+      }
+      obj.stock = '0';
+      obj.adjust_branch_stock = '';
+      obj.lot_number = '';
+      obj.expiry_date = '';
+      obj.precio_costo = '';
+      obj.precio_tableta = '';
+      obj.precio_unidad = '';
+    } else if (productType === 'servicio') {
+      obj.combo_components = [];
+      obj.stock = '0';
+      obj.adjust_branch_stock = '';
+      obj.lot_number = '';
+      obj.expiry_date = '';
+      obj.expira = '';
+      obj.precio_costo = '';
+      obj.precio_tableta = '';
+      obj.precio_unidad = '';
+    } else {
+      obj.combo_components = [];
+    }
+    if (productType === 'medicamento' && lotExpiryField && lotExpiryField.value) {
+      obj.expira = normalizeDateInput(lotExpiryField.value);
+      if (obj.expira) {
+        if (expiraField) expiraField.value = obj.expira;
+      }
+    } else if (productType === 'medicamento' && obj.expira) {
+      obj.expira = normalizeDateInput(obj.expira);
+      if (obj.expira && expiraField) expiraField.value = obj.expira;
+    }
+    if (productType === 'medicamento' && lotNumberField && lotNumberField.value.trim() && obj.expira) {
+      obj.expiry_date = obj.expira;
+      if (lotExpiryField) lotExpiryField.value = obj.expira;
+    }
+    const url=obj.id ? `api/productos?id=${obj.id}` : 'api/productos';
+    const method=obj.id?'PUT':'POST';
+      try{
+      const res = await fetch(url,{
+        method,
+        headers:{'Content-Type':'application/json'},
+        credentials:'include',
+        body:JSON.stringify(obj)
+      });
+      let data = null;
+      try { data = await res.clone().json(); } catch(_){}
+      if(!res.ok){
+        alert((data && data.error) ? data.error : 'Error al guardar producto');
+        return;
+      }
+      document.getElementById('formSection').style.display='none';
+      loadProductos();
+    }catch(err){
+      console.error('Error guardando producto', err);
+      alert('Error al guardar producto');
+    }
+  };
+
+  async function deleteProducto(id){
+    const response = await fetch(`api/productos?id=${id}`,{
+      method:'DELETE',
+      credentials:'include'
+    });
+    const data = await response.json().catch(()=>({}));
+    if(!response.ok || (data && data.ok === false)){
+      throw new Error((data && data.error) ? data.error : 'No se pudo eliminar el producto');
+    }
+  }
+
+  document.getElementById('lista').onclick=async e=>{
+  const btn = e.target.closest('button.edit, button.del');
+  if(!btn) return;
+  if (!userCanManageInventoryProducts()) return;
+  const id = btn.dataset.id;
+  if(!id) return;
+  try{
+    const ps = await fetchProductos();
+    const products = Array.isArray(ps) ? ps : [];
+    const p = products.find(x=>String(x.id)===String(id));
+
+    if(btn.matches('.edit') && p){
+      const f=document.getElementById('prodForm');
+      f.nombre_comercial.value=p.nombre_comercial;
+      if (f.codigo_barra) f.codigo_barra.value = p.codigo_barra || '';
+      if (f.tipo) f.tipo.value = normalizeProductType(p.tipo);
+      f.presentacion.value=p.presentacion;
+      f.principio_activo.value=p.principio_activo;
+      f.casa.value=p.casa;
+      f.expira.value=p.expira ? p.expira.split(' ')[0] : '';
+      if (lotNumberField) lotNumberField.value = normalizeProductType(p.tipo) === 'medicamento' ? (p.next_lot_number || '') : '';
+      if (lotExpiryField) lotExpiryField.value = normalizeProductType(p.tipo) === 'medicamento' ? (p.next_expiry ? String(p.next_expiry).split(' ')[0] : (f.expira.value || '')) : '';
+      f.stock.value=p.stock;
+      if (f.unidades_por_tableta) f.unidades_por_tableta.value = p.unidades_por_tableta || 1;
+      if (f.tabletas_por_caja) f.tabletas_por_caja.value = p.tabletas_por_caja || 1;
+      f.precio_costo.value=p.precio_costo;
+      f.precio_publico.value=p.precio_publico;
+      if (f.precio_tableta) f.precio_tableta.value = p.precio_tableta || '';
+      if (f.precio_unidad) f.precio_unidad.value = p.precio_unidad || '';
+      resetAdjustStockFlag(String(p.stock || ''));
+      syncProductTypeForm();
+      clearComboComponentRows();
+      if (normalizeProductType(p.tipo) === 'combo') {
+        const components = Array.isArray(p.combo_components) ? p.combo_components : [];
+        if (components.length) {
+          components.forEach((component) => addComboComponentRow(component));
+        } else {
+          addComboComponentRow();
+        }
+      }
+      updateAdjustmentMode();
+      f.id.value=p.id;
+      document.getElementById('formSection').style.display='';
+      document.getElementById('formTitle').innerText = normalizeProductType(p.tipo) === 'servicio'
+        ? 'Editar servicio'
+        : normalizeProductType(p.tipo) === 'combo'
+          ? 'Editar combo'
+          : 'Editar medicamento';
+    }
+    if(btn.matches('.del') && confirm('Eliminar?')){
+      await deleteProducto(id);
+      loadProductos();
+    }
+  }catch(err){
+    console.error('No se pudieron cargar los productos para editar', err);
+    alert(err && err.message ? err.message : 'Error cargando producto. Revisa la consola para más detalles.');
+  }
+  };
+  initStockWatcher();
+
+  const backupBtn = document.getElementById('backup');
+  if (backupBtn) {
+    backupBtn.addEventListener('click', async () => {
+      const originalText = backupBtn.textContent;
+      backupBtn.textContent = 'Generando...';
+      backupBtn.disabled = true;
+      try {
+        const res = await fetch('api/backup', { credentials: 'include' });
+        if (!res.ok) {
+          const msg = await res.text().catch(() => '');
+          alert(msg || 'Error al generar el respaldo');
+          return;
+        }
+        const blob = await res.blob();
+        const disposition = res.headers.get('content-disposition') || '';
+        const match = disposition.match(/filename="([^"]+)"/i);
+        const filename = match ? match[1] : 'backup.sql';
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        alert('Backup generado y descargado.');
+      } catch (err) {
+        console.error(err);
+        alert('No se pudo generar el backup.');
+      } finally {
+        backupBtn.textContent = originalText;
+        backupBtn.disabled = false;
+      }
+    });
+  }
+
+  let barcodeBuffer = '';
+  let barcodeTimer = null;
+  const resetBarcodeBuffer = () => {
+    barcodeBuffer = '';
+    if (barcodeTimer) {
+      clearTimeout(barcodeTimer);
+      barcodeTimer = null;
+    }
+  };
+  const submitBarcode = (code) => {
+    const cleaned = (code || '').trim();
+    if (!cleaned) return;
+    const form = document.getElementById('prodForm');
+    const input = form ? form.querySelector('input[name="codigo_barra"]') : null;
+    const formVisible = form && document.getElementById('formSection')?.style.display !== 'none';
+    if (!input || !formVisible) return;
+    input.focus();
+    input.value = cleaned;
+  };
+  const shouldIgnoreKey = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return true;
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    return false;
+  };
+  document.addEventListener('keydown', (e) => {
+    if (shouldIgnoreKey(e)) return;
+    if (e.key === 'Enter') {
+      if (barcodeBuffer) {
+        e.preventDefault();
+        submitBarcode(barcodeBuffer);
+        resetBarcodeBuffer();
+      }
+      return;
+    }
+    if (e.key.length === 1) {
+      barcodeBuffer += e.key;
+      if (barcodeTimer) clearTimeout(barcodeTimer);
+      barcodeTimer = setTimeout(() => {
+        resetBarcodeBuffer();
+      }, 300);
+    }
+  });
+}
+
+
+function openTypedProductForm(type, heading){
+  if (!userCanManageInventoryProducts()) return;
+  const section = document.getElementById('formSection');
+  if(section){
+    section.style.display = '';
+  }
+  const form = document.getElementById('prodForm');
+  if(form){
+    form.reset();
+    if (productTypeField) productTypeField.value = type;
+    clearComboComponentRows();
+    resetAdjustStockFlag('');
+    syncProductTypeForm();
+    if (type === 'combo') addComboComponentRow();
+  }
+  const titleEl = document.getElementById('formTitle');
+  if(titleEl){
+    titleEl.innerText = heading;
+  }
+}
+
+function showProductForm(){
+  openTypedProductForm('medicamento', 'Nuevo medicamento');
+}
+
+function showServiceForm(){
+  openTypedProductForm('servicio', 'Nuevo servicio');
+}
+
+function showComboForm(){
+  openTypedProductForm('combo', 'Nuevo combo');
+}
+</script>
+
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>

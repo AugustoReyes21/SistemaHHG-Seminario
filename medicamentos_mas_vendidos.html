@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Medicamentos más vendidos</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{--ink:#102033;--muted:#64748b;--line:#dbe4ef;--card:#ffffff;--accent:#1f8fd6;--accent2:#2454d8;}
+    body{margin:0;font-family:'Segoe UI',system-ui,-apple-system,sans-serif;color:var(--ink);}
+    .report-wrap{max-width:1180px;margin:22px auto;padding:0 18px;}
+    .hero{background:linear-gradient(135deg,#0f4c81,#2454d8);color:#fff;border-radius:18px;padding:20px;display:flex;justify-content:space-between;align-items:center;gap:16px;box-shadow:0 18px 38px rgba(15,76,129,.24);}
+    .hero h1{margin:0;font-size:26px;}
+    .hero p{margin:6px 0 0;color:#dbeafe;font-size:14px;max-width:720px;}
+    .actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
+    .btn{border:0;border-radius:12px;padding:10px 14px;font-weight:700;cursor:pointer;background:#fff;color:#0f4c81;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;}
+    .btn.primary{background:linear-gradient(135deg,#35b7f3,#5f63ff);color:#fff;}
+    .btn.alt{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.22);}
+    .card{background:rgba(255,255,255,.94);border:1px solid rgba(219,228,239,.9);border-radius:18px;box-shadow:0 18px 46px rgba(15,23,42,.14);padding:16px;margin-top:16px;}
+    .filters{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:12px;align-items:end;}
+    label{font-size:12px;color:#526179;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+    input,select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--ink);}
+    .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:16px;}
+    .metric{background:#f8fbff;border:1px solid #e6eef8;border-radius:14px;padding:14px;}
+    .metric span{display:block;color:var(--muted);font-size:12px;text-transform:uppercase;font-weight:700;}
+    .metric strong{display:block;font-size:24px;margin-top:4px;}
+    .table-wrap{overflow:auto;border-radius:14px;border:1px solid var(--line);margin-top:12px;}
+    table{width:100%;border-collapse:collapse;background:#fff;}
+    th,td{padding:11px 12px;border-bottom:1px solid #edf2f7;font-size:14px;text-align:left;white-space:nowrap;}
+    th{background:#f1f6fd;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:.04em;}
+    tr:hover td{background:#fbfdff;}
+    .right{text-align:right;}
+    .muted{color:var(--muted);font-size:13px;}
+    .rank{font-weight:800;color:#0f4c81;}
+    @media(max-width:900px){
+      .hero{align-items:flex-start;flex-direction:column;}
+      .filters,.summary{grid-template-columns:1fr;}
+      .actions{justify-content:flex-start;}
+    }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <main class="report-wrap">
+    <section class="hero">
+      <div>
+        <h1>Medicamentos más vendidos</h1>
+        <p>Ranking por cantidad neta vendida. Incluye medicamentos vendidos directamente y medicamentos descontados automáticamente dentro de combos.</p>
+      </div>
+      <div class="actions">
+        <button id="exportBtn" class="btn alt" type="button">Exportar Excel</button>
+        <button id="backBtn" class="btn" type="button">Volver</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="filters">
+        <div>
+          <label for="startDate">Desde</label>
+          <input id="startDate" type="date">
+        </div>
+        <div>
+          <label for="endDate">Hasta</label>
+          <input id="endDate" type="date">
+        </div>
+        <div>
+          <label for="branchSelect">Sucursal</label>
+          <select id="branchSelect">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label for="limitSelect">Límite</label>
+          <select id="limitSelect">
+            <option value="20">Top 20</option>
+            <option value="50" selected>Top 50</option>
+            <option value="100">Top 100</option>
+            <option value="300">Top 300</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button id="applyBtn" class="btn primary" type="button">Aplicar</button>
+          <button id="clearBtn" class="btn" type="button">Limpiar</button>
+        </div>
+      </div>
+      <div class="summary">
+        <div class="metric"><span>Medicamentos</span><strong id="totalProducts">0</strong></div>
+        <div class="metric"><span>Unidades netas</span><strong id="totalQty">0</strong></div>
+        <div class="metric"><span>Venta directa</span><strong id="directQty">0</strong></div>
+        <div class="metric"><span>En combos</span><strong id="comboQty">0</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div style="display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;">
+        <div>
+          <strong>Ranking</strong>
+          <div id="hint" class="muted">Sin datos cargados.</div>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Medicamento</th>
+              <th>Código</th>
+              <th>Presentación</th>
+              <th class="right">Cantidad neta</th>
+              <th class="right">Venta directa</th>
+              <th class="right">En combos</th>
+              <th class="right">Monto directo</th>
+              <th class="right">Ventas</th>
+            </tr>
+          </thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+    const state = { rows: [] };
+    const fmtQty = (value) => {
+      const n = Number(value || 0);
+      return Number.isFinite(n) ? n.toLocaleString('es-GT', { maximumFractionDigits: 2 }) : '0';
+    };
+    const fmtMoney = (value) => {
+      const n = Number(value || 0);
+      return Number.isFinite(n) ? `Q${n.toFixed(2)}` : 'Q0.00';
+    };
+    const escapeHtml = (value) => String(value || '').replace(/[&<>"']/g, (ch) => ({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[ch]));
+    const queryParams = () => {
+      const params = new URLSearchParams();
+      if ($('startDate').value) params.set('start', $('startDate').value);
+      if ($('endDate').value) params.set('end', $('endDate').value);
+      if ($('branchSelect').value) params.set('branch_id', $('branchSelect').value);
+      if ($('limitSelect').value) params.set('limit', $('limitSelect').value);
+      return params;
+    };
+    async function ensureAuth() {
+      const res = await fetch('api/auth_check', { credentials: 'include' });
+      const data = await res.json().catch(() => ({ ok: false }));
+      if (!data.ok) {
+        location.href = 'login.html';
+        return false;
+      }
+      const role = String(data.user?.rol || data.user?.role || '').toLowerCase();
+      if (!['admin', 'administrador', 'superadmin'].includes(role)) {
+        alert('No autorizado');
+        location.href = 'inventario.html';
+        return false;
+      }
+      return true;
+    }
+    async function loadBranches() {
+      try {
+        const res = await fetch('api/branches', { credentials: 'include' });
+        const data = await res.json();
+        const select = $('branchSelect');
+        select.innerHTML = '<option value="">Todas</option>';
+        (Array.isArray(data) ? data : []).forEach((branch) => {
+          const opt = document.createElement('option');
+          opt.value = branch.id;
+          opt.textContent = branch.name || `Sucursal ${branch.id}`;
+          select.appendChild(opt);
+        });
+      } catch (_) {}
+    }
+    function render(data) {
+      const rows = Array.isArray(data.rows) ? data.rows : [];
+      state.rows = rows;
+      $('totalProducts').textContent = String(rows.length);
+      $('totalQty').textContent = fmtQty(rows.reduce((sum, row) => sum + Number(row.total_qty || 0), 0));
+      $('directQty').textContent = fmtQty(rows.reduce((sum, row) => sum + Number(row.direct_qty || 0), 0));
+      $('comboQty').textContent = fmtQty(rows.reduce((sum, row) => sum + Number(row.combo_qty || 0), 0));
+      $('hint').textContent = rows.length
+        ? `${rows.length} medicamentos encontrados.`
+        : 'No hay medicamentos vendidos en el rango seleccionado.';
+      $('rows').innerHTML = rows.map((row, idx) => `
+        <tr>
+          <td class="rank">${idx + 1}</td>
+          <td>${escapeHtml(row.nombre || '')}</td>
+          <td>${escapeHtml(row.codigo || '')}</td>
+          <td>${escapeHtml(row.presentacion || '')}</td>
+          <td class="right"><strong>${fmtQty(row.total_qty)}</strong></td>
+          <td class="right">${fmtQty(row.direct_qty)}</td>
+          <td class="right">${fmtQty(row.combo_qty)}</td>
+          <td class="right">${fmtMoney(row.direct_total)}</td>
+          <td class="right">${fmtQty(row.sale_count)}</td>
+        </tr>
+      `).join('');
+    }
+    async function load() {
+      $('hint').textContent = 'Cargando reporte...';
+      const params = queryParams();
+      const res = await fetch(`api/top_sold_medicines?${params.toString()}`, { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        $('hint').textContent = data.error || 'Error cargando reporte.';
+        alert(data.error || 'Error cargando reporte.');
+        return;
+      }
+      render(data);
+    }
+    function setDefaultDates() {
+      const today = new Date();
+      const first = new Date(today.getFullYear(), today.getMonth(), 1);
+      const pad = (n) => String(n).padStart(2, '0');
+      $('startDate').value = `${first.getFullYear()}-${pad(first.getMonth() + 1)}-${pad(first.getDate())}`;
+      $('endDate').value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+    }
+    $('applyBtn').onclick = () => load();
+    $('clearBtn').onclick = () => {
+      $('startDate').value = '';
+      $('endDate').value = '';
+      $('branchSelect').value = '';
+      $('limitSelect').value = '50';
+      load();
+    };
+    $('exportBtn').onclick = () => {
+      const params = queryParams();
+      window.open(`api/top_sold_medicines_export?${params.toString()}`, '_blank');
+    };
+    $('backBtn').onclick = () => { location.href = 'inventario.html'; };
+    (async () => {
+      if (!(await ensureAuth())) return;
+      setDefaultDates();
+      await loadBranches();
+      await load();
+    })();
+  })();
+  </script>
+  <script src="js/profile.js"></script>
+  <script src="js/sidebar.js"></script>
+</body>
+</html>

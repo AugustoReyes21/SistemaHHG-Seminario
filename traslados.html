@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css"> <title>Traslado de productos</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background .3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:1100px;margin:20px auto;padding:0 20px;}
+    .card{background:#fff;padding:20px;border-radius:10px;box-shadow:0 4px 10px rgba(0,0,0,0.05);margin-bottom:16px;}
+    .form-row{display:flex;gap:12px;align-items:center;margin-bottom:10px;flex-wrap:wrap;}
+    label{min-width:150px;font-weight:600;}
+    select,input,textarea{padding:8px;border:1px solid #ccc;border-radius:6px;font-size:15px;}
+    select,input{min-width:200px;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;}
+    .btn{padding:8px 12px;border:none;border-radius:6px;background:#2b5876;color:#fff;cursor:pointer;transition:background .3s;}
+    .btn:hover{background:#4e4376;}
+    .secondary{background:#e0e4eb;color:#2b5876;}
+    .secondary:hover{background:#c9cfda;}
+    .danger{background:#e74c3c;}
+    .danger:hover{background:#c0392b;}
+    .muted{color:#777;font-size:13px;}
+    #receipt{display:none;background:#fff;padding:16px;border-radius:8px;box-shadow:0 2px 6px rgba(0,0,0,0.05);}
+    #receipt h3{text-align:center;margin:0 0 8px;}
+    #receiptBody .receipt-meta{display:flex;flex-direction:column;gap:2px;font-size:14px;}
+    #receiptBody .receipt-table th{background:#f0f4f8;font-weight:600;}
+    #receiptBody .receipt-total{margin-top:8px;text-align:right;font-weight:700;}
+    @media print{
+      @page{margin:12mm 10mm;}
+      body, body.app{background:#fff !important;color:#000 !important;}
+      body::before{display:none !important;}
+      .side-nav,.app-header,.app-actions,.back-btn,#profileModal{display:none !important;}
+      .container{max-width:none;margin:0;padding:0;}
+      .card{box-shadow:none;border:0;padding:0;}
+      .card:not(#receipt){display:none !important;}
+      #receipt{display:block !important;border-radius:0;box-shadow:none;border-top:2px solid #000;padding-top:8px;}
+      #receipt h3{margin:0 0 10px;font-size:16px;letter-spacing:0.2px;}
+      #receipt table{font-size:12px;}
+      #receipt th,#receipt td{padding:6px;border-bottom:1px solid #ddd;}
+      #receipt hr{border:0;border-top:1px solid #000;margin:8px 0;}
+      #receipt button{display:none !important;}
+    }
+  </style>
+  <base href="/Pos/merged/">
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Traslado de productos</h1>
+    <div>
+      <button onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="form-row">
+        <label>Origen</label>
+        <select id="sourceBranch">
+          <option value="">Seleccione origen</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Sucursal destino</label>
+        <select id="targetBranch">
+          <option value="">Seleccione sucursal</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>Solicitante</label>
+        <input id="requesterName" placeholder="Nombre de quien solicita" />
+      </div>
+      <div class="form-row">
+        <label>Observación</label>
+        <textarea id="note" rows="2" style="min-width:320px;" placeholder="Opcional"></textarea>
+      </div>
+      <div class="form-row" style="justify-content:flex-end;">
+        <button class="btn secondary" id="addRow">Agregar producto</button>
+      </div>
+      <table id="itemsTable">
+        <thead><tr><th>Producto</th><th style="width:120px;">Cantidad</th><th style="width:60px;"></th></tr></thead>
+        <tbody></tbody>
+      </table>
+      <div class="form-row" style="justify-content:flex-end;margin-top:12px;">
+        <button class="btn" id="saveTransfer">Guardar traslado</button>
+      </div>
+      
+    </div>
+
+    <div id="receipt" class="card">
+      <h3>Comprobante de traslado</h3>
+      <div id="receiptBody"></div>
+      <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+        <button class="btn secondary" onclick="window.print()">Imprimir</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+let PRODUCTS = [];
+let BRANCHES = [];
+let USER_ROLE = '';
+let EH_ONLY_TRANSFER = false;
+let EH_TRANSFER_AREA = '';
+
+function $(id){ return document.getElementById(id); }
+function formatQ(v){ return 'Q'+Number(v||0).toFixed(2); }
+
+function normalizeRole(value){
+  const raw = String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+  const map = {
+    emergencia: 'cashiee',
+    hospital: 'cashierh',
+    administrador: 'admin',
+    medicos: 'medico'
+  };
+  return map[raw] || raw;
+}
+
+function resolveEhTransferArea(role){
+  const qs = new URLSearchParams(location.search || '');
+  const areaParam = normalizeBranchName(qs.get('area') || '');
+  if(areaParam.includes('hospitalizacion') || areaParam === 'hospital'){
+    return 'hospitalizacion';
+  }
+  if(areaParam.includes('emergencia')){
+    return 'emergencia';
+  }
+  try{
+    if(role === 'enfermeria'){
+      const stored = normalizeBranchName(localStorage.getItem('hhg_nurse_area') || '');
+      if(stored.includes('hospitalizacion') || stored === 'hospital'){
+        return 'hospitalizacion';
+      }
+    }
+  }catch(_){}
+  return 'emergencia';
+}
+
+function normalizeBranchName(value){
+  return String(value || '')
+    .trim()
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '');
+}
+
+async function fetchJSON(url, opts={}){
+  const resp = await fetch(url, opts);
+  const text = await resp.text();
+  let data=null; try{ data=JSON.parse(text); }catch{}
+  return {ok:resp.ok, data, text, status:resp.status};
+}
+
+function normalizeProductPayload(payload){
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
+function productOptionLabel(p){
+  const name = (p.nombre_comercial || p.nombre || p.name || ('Producto ' + p.id)).trim();
+  const presentation = String(p.presentacion || '').trim();
+  const active = String(p.principio_activo || '').trim();
+  const house = String(p.casa || p.casa_nombre || p.laboratorio || '').trim();
+  const stockValue =
+    p.stock_branch != null && p.stock_branch !== ''
+      ? Number(p.stock_branch || 0)
+      : p.stock != null && p.stock !== ''
+        ? Number(p.stock || 0)
+        : null;
+  const parts = [name];
+  if (presentation) parts.push(presentation);
+  if (active) parts.push(active);
+  if (house) parts.push(house);
+  if (stockValue != null && Number.isFinite(stockValue)) parts.push(`Stock: ${stockValue}`);
+  return parts.join(' | ');
+}
+
+function refreshProductSelects(){
+  const selects = Array.from(document.querySelectorAll('#itemsTable tbody select'));
+  for(const sel of selects){
+    const current = String(sel.value || '');
+    sel.innerHTML = '<option value=\"\">Seleccione producto</option>';
+    PRODUCTS.forEach(p=>{
+      const opt=document.createElement('option');
+      opt.value=p.id;
+      opt.textContent = productOptionLabel(p);
+      sel.appendChild(opt);
+    });
+    if (current && PRODUCTS.some(p => String(p.id) === current)) {
+      sel.value = current;
+    }
+  }
+}
+
+async function loadProducts(branchId = null){
+  const qs = new URLSearchParams();
+  if (branchId) qs.set('branch_id', String(branchId));
+  const url = `api/productos${qs.toString() ? '?' + qs.toString() : ''}`;
+  const r = await fetchJSON(url,{
+    credentials:'include',
+    cache:'no-store'
+  });
+  if(r.ok) {
+    PRODUCTS = normalizeProductPayload(r.data).sort((a, b) => {
+      const left = `${a.nombre_comercial || a.nombre || a.name || ''} ${a.presentacion || ''}`.trim().toLowerCase();
+      const right = `${b.nombre_comercial || b.nombre || b.name || ''} ${b.presentacion || ''}`.trim().toLowerCase();
+      return left.localeCompare(right, 'es');
+    });
+    refreshProductSelects();
+  }
+}
+
+async function loadBranches(){
+  const r = await fetchJSON('api/branches?include_quirfano=1',{credentials:'include'});
+  if(r.ok && Array.isArray(r.data)) {
+    BRANCHES = EH_ONLY_TRANSFER
+      ? r.data.filter((b)=>{
+          const name = normalizeBranchName(b?.name || '');
+          return name.includes('emergencia') || name.includes('hospitalizacion') || name === 'hospital';
+        })
+      : r.data;
+    const selT = $('targetBranch');
+    const selS = $('sourceBranch');
+    selT.innerHTML = '<option value=\"\">Seleccione sucursal</option>';
+    selS.innerHTML = '<option value=\"\">Seleccione origen</option>';
+    BRANCHES.forEach(b => {
+      const opt1 = document.createElement('option');
+      opt1.value = b.id;
+      opt1.textContent = b.name;
+      selT.appendChild(opt1);
+      const opt2 = document.createElement('option');
+      opt2.value = b.id;
+      opt2.textContent = b.name;
+      selS.appendChild(opt2);
+    });
+    if(EH_ONLY_TRANSFER && BRANCHES.length === 2){
+      const emergency = BRANCHES.find(b => normalizeBranchName(b.name).includes('emergencia'));
+      const hospital = BRANCHES.find(b => {
+        const name = normalizeBranchName(b.name);
+        return name.includes('hospitalizacion') || name === 'hospital';
+      });
+      if(emergency && hospital){
+        const sourceArea =
+          USER_ROLE === 'cashiee'
+            ? 'emergencia'
+            : USER_ROLE === 'cashierh'
+              ? 'hospitalizacion'
+              : EH_TRANSFER_AREA;
+        if(sourceArea === 'hospitalizacion'){
+          selS.value = String(hospital.id);
+          selT.value = String(emergency.id);
+        }else{
+          selS.value = String(emergency.id);
+          selT.value = String(hospital.id);
+        }
+        if(USER_ROLE === 'cashiee' || USER_ROLE === 'cashierh' || USER_ROLE === 'enfermeria'){
+          selS.disabled = true;
+          selT.disabled = true;
+        }
+      }
+    }else{
+      selS.disabled = false;
+      selT.disabled = false;
+    }
+  }
+}
+
+function addRow(){
+  const tbody = $('itemsTable').querySelector('tbody');
+  const tr = document.createElement('tr');
+  const tdProd = document.createElement('td');
+  const tdQty = document.createElement('td');
+  const tdDel = document.createElement('td');
+
+  const sel = document.createElement('select');
+  sel.style.width = '100%';
+  sel.innerHTML = '<option value=\"\">Seleccione producto</option>';
+  PRODUCTS.forEach(p=>{
+    const opt=document.createElement('option');
+    opt.value=p.id;
+    opt.textContent = productOptionLabel(p);
+    sel.appendChild(opt);
+  });
+
+  const qty = document.createElement('input');
+  qty.type='number'; qty.min='0.01'; qty.step='0.01'; qty.value='1'; qty.style.width='100%';
+
+  const del = document.createElement('button');
+  del.type='button'; del.textContent='X'; del.className='btn danger'; del.style.padding='4px 8px';
+  del.onclick=()=>tr.remove();
+
+  tdProd.appendChild(sel); tdQty.appendChild(qty); tdDel.appendChild(del);
+  tr.appendChild(tdProd); tr.appendChild(tdQty); tr.appendChild(tdDel);
+  tbody.appendChild(tr);
+}
+
+function collectItems(){
+  const rows = Array.from($('itemsTable').querySelectorAll('tbody tr'));
+  const items=[];
+  for(const r of rows){
+    const pid = parseInt(r.querySelector('select').value||'0');
+    const qty = parseFloat(r.querySelector('input').value||'0');
+    if(pid>0 && qty>0) items.push({product_id:pid, quantity:qty});
+  }
+  return items;
+}
+
+async function saveTransfer(){
+  const source = parseInt($('sourceBranch').value||'0');
+  const target = parseInt($('targetBranch').value||'0');
+  const requester = ($('requesterName').value||'').trim();
+  if(!source){ alert('Seleccione la sucursal de origen'); return; }
+  if(!target){ alert('Seleccione la sucursal destino'); return; }
+  if(source===target){ alert('El origen y el destino deben ser diferentes'); return; }
+  if(!requester){ alert('Ingrese el nombre del solicitante'); return; }
+  const items = collectItems();
+  if(!items.length){ alert('Agregue al menos un producto'); return; }
+  const payload = { source_branch_id: source, target_branch_id: target, note: $('note').value, requester_name: requester, items };
+
+  const r = await fetchJSON('api/transfer',{
+    method:'POST',
+    credentials:'include',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify(payload)
+  });
+  if(r.ok && r.data && r.data.ok){
+    renderReceipt(r.data.receipt);
+    alert('Traslado registrado');
+  }else{
+    const msg = r.data?.error || r.text || 'Error creando traslado';
+    alert(msg.slice(0,300));
+  }
+}
+
+function renderReceipt(rcp){
+  if(!rcp) return;
+  const div = $('receiptBody');
+  const items = rcp.items || [];
+  let html = `
+    <div class="receipt-meta">
+      <div><strong>Traslado #${rcp.transfer_id}</strong></div>
+      <div>${rcp.created_at || ''}</div>
+      <div>Origen: ${rcp.source}</div>
+      <div>Destino: ${rcp.target}</div>
+      <div>Solicitante: ${rcp.requester_name || ''}</div>
+    </div>
+    <hr>
+    <table class="receipt-table" style="width:100%;border-collapse:collapse;">
+      <thead><tr><th style="text-align:left;">Producto</th><th>Cant.</th><th style="text-align:right;">Costo</th><th style="text-align:right;">Subtotal</th></tr></thead>
+      <tbody>
+        ${items.map(it=>`<tr><td>${it.name||('Prod '+it.product_id)}</td><td style="text-align:center;">${it.qty}</td><td style="text-align:right;">${formatQ(it.unit_cost||0)}</td><td style="text-align:right;">${formatQ(it.subtotal||0)}</td></tr>`).join('')}
+      </tbody>
+    </table>
+    <hr>
+    <div class="receipt-total"><strong>Total unidades: ${rcp.total_qty}</strong></div>
+  `;
+  div.innerHTML = html;
+  $('receipt').style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', async ()=>{
+  try{
+    const res = await fetch('api/auth_check',{credentials:'include'});
+    const d = await res.json().catch(()=>({ok:false}));
+    if(!d.ok) throw new Error('auth');
+    USER_ROLE = normalizeRole(d.user.rol || d.user.role || '');
+    EH_ONLY_TRANSFER = USER_ROLE === 'cashiee' || USER_ROLE === 'cashierh' || USER_ROLE === 'enfermeria';
+    EH_TRANSFER_AREA = resolveEhTransferArea(USER_ROLE);
+    if(
+      USER_ROLE !== 'admin' &&
+      USER_ROLE !== 'administrador' &&
+      USER_ROLE !== 'farmacia' &&
+      USER_ROLE !== 'cashier' &&
+      USER_ROLE !== 'cajero' &&
+      USER_ROLE !== 'superadmin' &&
+      USER_ROLE !== 'cashiee' &&
+      USER_ROLE !== 'cashierh' &&
+      USER_ROLE !== 'enfermeria'
+    ){
+      alert('Acceso restringido a traslados');
+      return location.href='login.html';
+    }
+    const backBtn = document.querySelector('.back-btn');
+    if(backBtn && EH_ONLY_TRANSFER){
+      backBtn.onclick = ()=>{
+        if(USER_ROLE === 'cashiee'){
+          window.location.href = 'ventas_emergencia.html';
+        }else if(USER_ROLE === 'cashierh'){
+          window.location.href = 'hospitalizacion.html';
+        }else{
+          window.location.href = EH_TRANSFER_AREA === 'hospitalizacion' ? 'hospitalizacion.html' : 'ventas_emergencia.html';
+        }
+      };
+    }
+  }catch(e){
+    return location.href='login.html';
+  }
+
+  await loadBranches();
+  await loadProducts(Number($('sourceBranch').value || '0') || null);
+  addRow();
+  $('addRow').onclick = addRow;
+  $('saveTransfer').onclick = saveTransfer;
+  $('sourceBranch').addEventListener('change', async (e) => {
+    const branchId = Number(e.target.value || 0) || null;
+    await loadProducts(branchId);
+  });
+});
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+

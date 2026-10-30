@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Turnos de Caja</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background 0.3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:none;margin:20px 20px;padding:0 10px;display:grid;gap:14px;}
+    .card{background:#fff;border-radius:8px;padding:12px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;}
+    .filters label{display:block;font-size:12px;color:#555;margin-bottom:4px;}
+    .filters input,.filters select{padding:8px;border-radius:6px;border:1px solid #ccc;}
+    .filters button{background:#2b5876;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;}
+    .filters button:hover{background:#4e4376;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;}
+    th,td{padding:8px;border-bottom:1px solid #eee;text-align:left;font-size:13px;}
+    th{background:#f0f4f8;color:#333;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .muted{color:#666;font-size:12px;}
+    .receipt-link{display:inline-block;padding:6px 10px;border-radius:6px;background:#2b5876;color:#fff;text-decoration:none;white-space:nowrap;}
+    .receipt-link:hover{background:#4e4376;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Turnos y Caja</h1>
+    <div>
+      <button id="backBtn" class="back-btn">Volver</button>
+    </div>
+  </header>
+
+  <div class="container">
+    <div class="card">
+      <div class="filters">
+        <div>
+          <label>Desde</label>
+          <input type="date" id="fStart">
+        </div>
+        <div>
+          <label>Hasta</label>
+          <input type="date" id="fEnd">
+        </div>
+        <div>
+          <label>Sucursal</label>
+          <select id="branchSelect">
+            <option value="">Todas</option>
+          </select>
+        </div>
+        <div>
+          <label>Cajero</label>
+          <select id="userSelect">
+            <option value="">Todos</option>
+          </select>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="btnBuscar">Buscar</button>
+        </div>
+        <div>
+          <label>&nbsp;</label>
+          <button id="btnExport">Exportar Excel</button>
+        </div>
+        <div class="muted" id="hint">Sin datos.</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Ventas por cajero</h3>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>Cajero</th>
+              <th>Ventas</th>
+              <th>Total</th>
+            </tr>
+          </thead>
+          <tbody id="cashierTotals">
+            <tr><td colspan="3" class="muted">Sin datos.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0;">Turnos de caja</h3>
+      <div style="overflow:auto;">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Apertura</th>
+              <th>Cierre</th>
+              <th>Cajero</th>
+              <th>Sucursal</th>
+              <th>Monto inicial</th>
+              <th>Total ventas</th>
+              <th>Monto final</th>
+              <th>Diferencia</th>
+              <th>Estado</th>
+              <th>Comprobante</th>
+            </tr>
+          </thead>
+          <tbody id="shiftRows">
+            <tr><td colspan="11" class="muted">Sin datos.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+let ROLE = '';
+
+function money(v){ return 'Q' + (Number(v||0)).toFixed(2); }
+
+function getBackTargetForRole(role){
+  const normalized = String(role || '').toLowerCase();
+  if (normalized === 'cashiee') return 'ventas_emergencia.html';
+  if (['cashier', 'cajero', 'farmacia'].includes(normalized)) return 'ventas.html';
+  if (['admin', 'administrador', 'contabilidad', 'superadmin'].includes(normalized)) return 'inventario.html';
+  return 'inventario.html';
+}
+
+function buildCloseReceiptUrl(cajaId){
+  const lang = (window.I18N && window.I18N.getLang) ? window.I18N.getLang() : (localStorage.getItem('app_lang') || 'es');
+  return `api/cierre_pdf?cierre_id=${encodeURIComponent(cajaId)}&lang=${encodeURIComponent(lang)}`;
+}
+
+function todayStr(){
+  const d = new Date();
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const dd = String(d.getDate()).padStart(2, '0');
+  return `${d.getFullYear()}-${mm}-${dd}`;
+}
+
+function setDefaults(){
+  const today = todayStr();
+  const fStart = document.getElementById('fStart');
+  const fEnd = document.getElementById('fEnd');
+  if (!fStart.value) fStart.value = today;
+  if (!fEnd.value) fEnd.value = today;
+}
+
+async function loadBranches(){
+  try{
+    const res = await fetch('api/branches', { credentials:'include' });
+    const data = await res.json();
+    const sel = document.getElementById('branchSelect');
+    (Array.isArray(data) ? data : []).forEach(b=>{
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      opt.textContent = b.name;
+      sel.appendChild(opt);
+    });
+  }catch(_){}
+}
+
+async function loadUsers(){
+  const sel = document.getElementById('userSelect');
+  sel.innerHTML = '<option value="">Todos</option>';
+  if (!['admin','administrador','contabilidad','superadmin'].includes(ROLE)) {
+    return;
+  }
+  try{
+    const res = await fetch('api/users', { credentials:'include' });
+    const data = await res.json();
+    (Array.isArray(data) ? data : []).forEach(u=>{
+      const opt = document.createElement('option');
+      opt.value = u.id;
+      opt.textContent = u.username;
+      sel.appendChild(opt);
+    });
+  }catch(_){}
+}
+
+function renderCashierTotals(rows){
+  const tbody = document.getElementById('cashierTotals');
+  tbody.innerHTML = '';
+  if (!rows.length){
+    tbody.innerHTML = '<tr><td colspan="3" class="muted">Sin datos.</td></tr>';
+    return;
+  }
+  rows.forEach(r=>{
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.cajero || r.user_id || '--'}</td>
+      <td>${Number(r.ventas || 0)}</td>
+      <td>${money(r.total || 0)}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function renderShifts(rows){
+  const tbody = document.getElementById('shiftRows');
+  tbody.innerHTML = '';
+  if (!rows.length){
+    tbody.innerHTML = '<tr><td colspan="11" class="muted">Sin datos.</td></tr>';
+    return;
+  }
+  rows.forEach(r=>{
+    const total = Number(r.total_ventas || 0);
+    const mf = r.monto_final != null ? Number(r.monto_final) : null;
+    const diff = r.diferencia != null ? Number(r.diferencia) : (mf != null ? mf - total : 0);
+    const isClosed = !!r.fecha_cierre || (String(r.estado || '').toUpperCase() !== 'ABIERTA' && mf != null);
+    const receiptHtml = isClosed && r.id
+      ? `<a class="receipt-link" href="${buildCloseReceiptUrl(r.id)}" target="_blank" rel="noopener">Ver comprobante</a>`
+      : '<span class="muted">--</span>';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.id || ''}</td>
+      <td>${r.fecha_apertura || ''}</td>
+      <td>${r.fecha_cierre || ''}</td>
+      <td>${r.cajero || r.user_id || '--'}</td>
+      <td>${r.sucursal || r.branch_id || '--'}</td>
+      <td>${money(r.monto_inicial || 0)}</td>
+      <td>${money(total)}</td>
+      <td>${mf != null ? money(mf) : '--'}</td>
+      <td>${money(diff)}</td>
+      <td>${r.estado || ''}</td>
+      <td>${receiptHtml}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function buscar(){
+  const params = new URLSearchParams();
+  const fStart = document.getElementById('fStart').value;
+  const fEnd = document.getElementById('fEnd').value;
+  const branchId = document.getElementById('branchSelect').value;
+  const userId = document.getElementById('userSelect').value;
+  if (fStart) params.set('start', fStart);
+  if (fEnd) params.set('end', fEnd);
+  if (branchId) params.set('branch_id', branchId);
+  if (userId) params.set('user_id', userId);
+  const res = await fetch(`api/cash_shifts_report?${params.toString()}`, { credentials:'include' });
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    alert((data && data.error) || 'Error cargando reporte');
+    return;
+  }
+  renderCashierTotals(data.cashier_totals || []);
+  renderShifts(data.shifts || []);
+  document.getElementById('hint').textContent = `Turnos: ${(data.shifts||[]).length} · Cajeros: ${(data.cashier_totals||[]).length}`;
+}
+
+(function bindExport(){
+  const btn = document.getElementById('btnExport');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const params = new URLSearchParams();
+    const fStart = document.getElementById('fStart').value;
+    const fEnd = document.getElementById('fEnd').value;
+    const branchId = document.getElementById('branchSelect').value;
+    const userId = document.getElementById('userSelect').value;
+    if (fStart) params.set('start', fStart);
+    if (fEnd) params.set('end', fEnd);
+    if (branchId) params.set('branch_id', branchId);
+    if (userId) params.set('user_id', userId);
+    window.open(`api/cash_shifts_export?${params.toString()}`, '_blank');
+  });
+})();
+
+(async function init(){
+  try{
+    const auth = await fetch('api/auth_check', { credentials:'include' });
+    const data = await auth.json();
+    if (!data.ok) return window.location = 'login.html';
+    ROLE = (data.user.rol || data.user.role || '').toLowerCase();
+    if (!['admin','administrador','contabilidad','superadmin'].includes(ROLE)) {
+      alert('No autorizado');
+      window.location = 'login.html';
+      return;
+    }
+    const backBtn = document.getElementById('backBtn');
+    if (backBtn) {
+      backBtn.addEventListener('click', () => {
+        window.location.href = getBackTargetForRole(ROLE);
+      });
+    }
+  }catch(_){
+    return window.location = 'login.html';
+  }
+  setDefaults();
+  await loadBranches();
+  await loadUsers();
+  await buscar();
+  document.getElementById('btnBuscar').addEventListener('click', buscar);
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>

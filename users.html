@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Usuarios</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background 0.3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:1000px;margin:20px auto;padding:0 20px;display:flex;flex-direction:column;gap:20px;}
+    .card{background:#fff;border-radius:8px;padding:20px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    .card h3{margin-top:0;color:#2b5876;}
+    input, select{width:100%;padding:8px;border:1px solid #ccc;border-radius:6px;font-size:15px;margin-bottom:12px;}
+    button{padding:8px 12px;border:none;border-radius:6px;cursor:pointer;background:#2b5876;color:#fff;transition:background 0.3s;}
+    button:hover{background:#4e4376;}
+    .create-overlay {
+      position: fixed;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background:
+        radial-gradient(520px 260px at 20% 20%, rgba(34,211,238,0.18), transparent 60%),
+        radial-gradient(620px 300px at 80% 80%, rgba(59,130,246,0.16), transparent 62%),
+        rgba(2,6,23,0.58);
+      z-index: 9999;
+      backdrop-filter: blur(6px);
+    }
+    body.creating-user .create-overlay { display: flex; }
+    .create-loader {
+      width: 92px;
+      height: 92px;
+      border-radius: 999px;
+      border: 2px solid rgba(56, 189, 248, 0.3);
+      border-top-color: rgba(56, 189, 248, 0.95);
+      animation: spin 1s linear infinite;
+      box-shadow: 0 0 26px rgba(56, 189, 248, 0.35);
+      position: relative;
+    }
+    .create-loader::after {
+      content: '';
+      position: absolute;
+      inset: 10px;
+      border-radius: 999px;
+      border: 2px dashed rgba(148, 163, 184, 0.6);
+      animation: spin 2s linear infinite reverse;
+    }
+    .create-text {
+      margin-top: 12px;
+      color: #e2e8f0;
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <div class="create-overlay" id="createUserOverlay" aria-hidden="true">
+    <div style="display:flex;flex-direction:column;align-items:center;">
+      <div class="create-loader"></div>
+      <div class="create-text">Creando...</div>
+    </div>
+  </div>
+  <header class="app-header">
+    <h1>Usuarios - Administración</h1>
+    <button onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h3>Crear usuario</h3>
+      <form id="createForm">
+        <input name="username" placeholder="Usuario" required>
+        <input name="email" type="email" placeholder="Correo electrónico" required>
+        <input name="photo_file" id="photoFile" type="file" accept="image/*" capture="user">
+        <select name="rol">
+          <option value="user">User</option>
+          <option value="enfermeria">Enfermería</option>
+          <option value="medico">Médicos</option>
+          <option value="secretaria">Secretaria</option>
+          <option value="superadmin">Superusuario</option>
+          <option value="cashiee">Emergencia</option>
+          <option value="admin">Admin</option>
+          <option value="cashierh">Hospitalización</option>
+          <option value="farmacia">Farmacia</option>
+        </select>
+        <div style="display:flex;justify-content:flex-end;">
+          <button type="submit">Crear</button>
+        </div>
+      </form>
+    </div>
+
+    <div class="card">
+      <h3>Lista de usuarios</h3>
+      <div id="usersList"></div>
+    </div>
+  </div>
+
+  <input id="quickPhotoInput" type="file" accept="image/*" capture="user" style="display:none;">
+
+<script src="js/users.js"></script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<div id="editUserModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Editar usuario</h3>
+    <div class="muted">Usuario: <span data-edit-username></span></div>
+    <label style="margin-top:10px;">Foto (URL)</label>
+    <input id="editPhotoUrl" type="url" placeholder="https://...">
+    <label>Foto (archivo o cámara)</label>
+    <input id="editPhotoFile" type="file" accept="image/*" capture="user">
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px;">
+      <button type="button" class="secondary" id="editUserClose">Cancelar</button>
+      <button type="button" id="editUserSave">Guardar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+

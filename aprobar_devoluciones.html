@@ -1,0 +1,345 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Aprobar devoluciones</title>
+  <link rel="stylesheet" href="css/style.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body.auth {
+      background: radial-gradient(1200px 600px at 10% 10%, #0b1b2b 0%, #09121d 45%, #060b12 100%);
+      overflow: hidden;
+    }
+    .auth-bg {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .auth-bg .grid {
+      position: absolute;
+      inset: -20% -20%;
+      background-image:
+        linear-gradient(rgba(56, 189, 248, 0.07) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(56, 189, 248, 0.07) 1px, transparent 1px);
+      background-size: 60px 60px;
+      transform: perspective(800px) rotateX(55deg);
+      animation: gridFloat 12s ease-in-out infinite;
+      opacity: 0.6;
+    }
+    .auth-bg .hg-mark {
+      position: absolute;
+      top: 86px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+      font-weight: 800;
+      font-size: 74px;
+      letter-spacing: 0.08em;
+      color: rgba(226, 232, 240, 0.75);
+      text-shadow: 0 0 18px rgba(56, 189, 248, 0.45);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .auth-bg .hg-mark span {
+      display: inline-block;
+      opacity: 0;
+      animation: hgFloat 6s ease-in-out infinite;
+    }
+    .auth-bg .hg-mark .h-left {
+      animation: hgInLeft 1.2s ease-out forwards, hgFloat 6s ease-in-out 1.2s infinite;
+    }
+    .auth-bg .hg-mark .h-mid {
+      animation: hgInDown 1.2s ease-out forwards, hgFloat 6s ease-in-out 1.2s infinite;
+    }
+    .auth-bg .hg-mark .g {
+      animation: hgInRight 1.2s ease-out forwards, hgFloat 6s ease-in-out 1.2s infinite;
+    }
+    .auth-bg .pulse-ring {
+      position: absolute;
+      inset: 0;
+      border-radius: 999px;
+      border: 2px solid rgba(14, 165, 233, 0.25);
+      animation: ringPulse 5s ease-out infinite;
+    }
+    .auth-bg .pulse {
+      position: absolute;
+      width: 320px;
+      height: 320px;
+      border-radius: 999px;
+      top: 18%;
+      left: 8%;
+      opacity: 0.6;
+    }
+    .auth-bg .ecg {
+      position: absolute;
+      left: -10%;
+      right: -10%;
+      bottom: 18%;
+      height: 80px;
+      opacity: 0.5;
+    }
+    .auth-bg .ecg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, transparent 0%, rgba(34, 211, 238, 0.8) 50%, transparent 100%);
+      mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120' fill='none' stroke='white' stroke-width='8'><path d='M0 60 H140 L170 20 L210 100 L250 60 H380 L420 60 L450 20 L490 100 L530 60 H700 L740 60 L770 20 L810 100 L850 60 H1200'/></svg>");
+      mask-size: 1200px 120px;
+      mask-repeat: repeat-x;
+      animation: ecgScan 6s linear infinite;
+    }
+    .auth-bg .glow {
+      position: absolute;
+      width: 420px;
+      height: 420px;
+      border-radius: 999px;
+      filter: blur(40px);
+      opacity: 0.55;
+      animation: glowPulse 8s ease-in-out infinite;
+    }
+    .auth-bg .glow.one {
+      background: radial-gradient(circle, rgba(34, 211, 238, 0.7), transparent 70%);
+      top: -80px;
+      left: -60px;
+    }
+    .auth-bg .glow.two {
+      background: radial-gradient(circle, rgba(99, 102, 241, 0.6), transparent 70%);
+      bottom: -120px;
+      right: -80px;
+      animation-delay: 1.8s;
+    }
+    .auth-shell {
+      position: relative;
+      z-index: 1;
+      animation: shellIn 0.9s ease-out both;
+    }
+    .auth-card {
+      backdrop-filter: blur(10px);
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(148, 163, 184, 0.2);
+      box-shadow: 0 20px 60px rgba(2, 6, 23, 0.45);
+      animation: cardRise 0.9s ease-out both;
+      color: #e2e8f0;
+    }
+    .auth-hero .brand h1,
+    .auth-hero .brand p,
+    .auth-card h2,
+    .auth-card p,
+    .auth-card label,
+    .auth-card a {
+      color: #e2e8f0;
+    }
+    .auth-card .form-row {
+      margin-bottom: 12px;
+    }
+    .auth-card input {
+      width: 100%;
+      padding: 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      background: rgba(15, 23, 42, 0.7);
+      color: #e2e8f0;
+    }
+    .auth-card button {
+      width: 100%;
+      padding: 10px 14px;
+      border: none;
+      border-radius: 10px;
+      background: #38bdf8;
+      color: #0b1b2b;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .auth-card button:hover {
+      background: #22d3ee;
+    }
+    .muted { color:#94a3b8; font-size:13px; }
+    .success {
+      text-align: center;
+      padding: 16px 0;
+    }
+    @keyframes gridFloat {
+      0% { transform: perspective(800px) rotateX(55deg) translateY(0); }
+      50% { transform: perspective(800px) rotateX(55deg) translateY(18px); }
+      100% { transform: perspective(800px) rotateX(55deg) translateY(0); }
+    }
+    @keyframes glowPulse {
+      0% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.08); opacity: 0.75; }
+      100% { transform: scale(1); opacity: 0.5; }
+    }
+    @keyframes hgInLeft {
+      0% { transform: translateX(-120px); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes hgInRight {
+      0% { transform: translateX(120px); opacity: 0; }
+      100% { transform: translateX(0); opacity: 1; }
+    }
+    @keyframes hgInDown {
+      0% { transform: translateY(-120px); opacity: 0; }
+      100% { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes hgFloat {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+      100% { transform: translateY(0); }
+    }
+    @keyframes ringPulse {
+      0% { transform: scale(0.82); opacity: 0.15; }
+      40% { transform: scale(1); opacity: 0.3; }
+      100% { transform: scale(1.2); opacity: 0; }
+    }
+    @keyframes ecgScan {
+      0% { transform: translateX(-30%); opacity: 0.2; }
+      40% { opacity: 0.65; }
+      100% { transform: translateX(30%); opacity: 0.2; }
+    }
+    @keyframes shellIn {
+      0% { opacity: 0; transform: translateY(10px); }
+      100% { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes cardRise {
+      0% { opacity: 0; transform: translateY(18px) scale(0.98); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    @media (max-width: 900px) {
+      .auth-bg .grid { background-size: 48px 48px; }
+      .auth-bg .glow { width: 320px; height: 320px; }
+    }
+  </style>
+  <base href="/Pos/merged/">
+</head>
+<body class="auth">
+  <div class="auth-bg" aria-hidden="true">
+    <div class="grid"></div>
+    <div class="glow one"></div>
+    <div class="glow two"></div>
+    <div class="pulse"><div class="pulse-ring"></div></div>
+    <div class="hg-mark" aria-hidden="true">
+      <span class="h-left">H</span>
+      <span class="h-mid">H</span>
+      <span class="g">G</span>
+    </div>
+    <div class="ecg"></div>
+  </div>
+  <main class="auth-shell">
+    <section class="auth-hero">
+      <div class="brand">
+        <img class="brand-logo" src="https://hospitalhilariogalindo.org/wp-content/uploads/2024/12/logo_mc.png" alt="Logo">
+        <div>
+          <h1>SistemaHHG</h1>
+          <p>Aprobaciones de devoluciones.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="auth-card" id="card">
+      <h2>Aprobar devolución</h2>
+      <p class="muted" id="status">Cargando solicitud...</p>
+      <div id="details" style="display:none;">
+        <p><strong>Tipo:</strong> <span id="tipo"></span></p>
+        <p><strong>Venta:</strong> <span id="venta"></span></p>
+        <p><strong>Monto:</strong> <span id="monto"></span></p>
+        <p><strong>Motivo:</strong> <span id="motivo"></span></p>
+        <p><strong>Expira:</strong> <span id="expira"></span></p>
+        <div class="form-row" id="adminUserRow" style="display:none;">
+          <label>Usuario admin</label>
+          <input id="adminUser" type="text" placeholder="Usuario">
+        </div>
+        <div class="form-row">
+          <label>Confirme su contraseña</label>
+          <input id="adminPass" type="password" placeholder="Contraseña">
+        </div>
+        <button id="approveBtn">Aprobar</button>
+      </div>
+    </section>
+  </main>
+
+<script>
+const qs = new URLSearchParams(location.search);
+const token = qs.get('token') || '';
+const statusEl = document.getElementById('status');
+const detailsEl = document.getElementById('details');
+const adminUserRow = document.getElementById('adminUserRow');
+const card = document.getElementById('card');
+let REQUIRE_USER = false;
+
+async function fetchJSON(url, opts = {}) {
+  const resp = await fetch(url, opts);
+  const text = await resp.text();
+  let data = null;
+  try { data = JSON.parse(text); } catch {}
+  return { ok: resp.ok, data, text };
+}
+
+async function checkAuth() {
+  const r = await fetchJSON('api/auth_check', { credentials: 'include' });
+  if (!r.ok || !r.data || !r.data.ok) return false;
+  const role = String(r.data.user?.rol || r.data.user?.role || '').toLowerCase();
+  return role.includes('admin');
+}
+
+async function loadInfo() {
+  if (!token) {
+    statusEl.textContent = 'Token inválido';
+    return;
+  }
+  const isAdmin = await checkAuth();
+  REQUIRE_USER = !isAdmin;
+  adminUserRow.style.display = REQUIRE_USER ? '' : 'none';
+  const r = await fetchJSON(`api/return_approval_info?token=${encodeURIComponent(token)}`, { credentials: 'include' });
+  if (!r.ok || !r.data || !r.data.ok) {
+    statusEl.textContent = (r.data && r.data.error) ? r.data.error : 'Solicitud no encontrada';
+    return;
+  }
+  const payload = r.data.payload || {};
+  document.getElementById('tipo').textContent = r.data.type || '';
+  document.getElementById('venta').textContent = payload.sale_id || payload.venta_id || '—';
+  document.getElementById('monto').textContent = payload.amount || payload.monto || payload.monto_devolver || '—';
+  document.getElementById('motivo').textContent = payload.motive || '';
+  document.getElementById('expira').textContent = r.data.expires_at || '';
+  statusEl.textContent = '';
+  detailsEl.style.display = '';
+}
+
+function showApproved() {
+  card.innerHTML = `
+    <h2>Devolución Aprobada</h2>
+    <div class="success">
+      <p>La devolución se aplicó correctamente.</p>
+    </div>
+  `;
+}
+
+document.getElementById('approveBtn').addEventListener('click', async () => {
+  const pass = document.getElementById('adminPass').value.trim();
+  if (!pass) return alert('Ingrese su contraseña');
+  let payload = { token, password: pass };
+  let url = 'api/return_approval_approve';
+  if (REQUIRE_USER) {
+    const user = document.getElementById('adminUser').value.trim();
+    if (!user) return alert('Ingrese usuario admin');
+    payload.username = user;
+    url = 'api/return_approval_approve_public';
+  }
+  const r = await fetchJSON(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload)
+  });
+  if (r.ok && r.data && r.data.ok) {
+    showApproved();
+  } else {
+    alert((r.data && r.data.error) || 'No se pudo aprobar');
+  }
+});
+
+loadInfo();
+</script>
+</body>
+</html>

@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Historial Devoluciones</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;}
+    .container{max-width:1100px;margin:20px auto;padding:0 16px;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:10px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;color:#333;}
+    tr:last-child td{border-bottom:none;}
+    .muted{color:#666;font-size:13px;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Historial Devoluciones</h1>
+    <div><button onclick="window.location='inventario.html'" class="back-btn">Volver</button></div>
+  </header>
+  <div class="container">
+    <table id="table">
+      <thead>
+        <tr>
+          <th>ID</th><th>Tipo</th><th>Referencia</th><th>Fecha devolución</th><th>Fecha venta</th><th>Sucursal</th><th>Usuario</th><th>Autorizado por</th><th>Caja origen</th><th>Caja devolución</th><th>Total</th><th>Motivo</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+<script>
+async function loadData(){
+  const res = await fetch('api/history_returns',{credentials:'include'});
+  const data = await res.json();
+  if(!Array.isArray(data)) return;
+  const tbody = document.querySelector('#table tbody');
+  tbody.innerHTML = '';
+  data.forEach(row=>{
+    const tr = document.createElement('tr');
+    const who = row.usuario || row.proveedor || '';
+    const authorizedBy = row.autorizado_por || '';
+    const total = row.total != null ? `Q${Number(row.total).toFixed(2)}` : '';
+    tr.innerHTML = `
+      <td>${row.id}</td>
+      <td>${row.tipo || ''}</td>
+      <td>${row.referencia != null ? row.referencia : ''}</td>
+      <td>${row.fecha || ''}</td>
+      <td>${row.venta_fecha || ''}</td>
+      <td>${row.sucursal || ''}</td>
+      <td>${who}</td>
+      <td>${authorizedBy}</td>
+      <td>${row.caja_origen || ''}</td>
+      <td>${row.caja_devolucion || ''}</td>
+      <td>${total}</td>
+      <td>${row.motivo || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+loadData().catch(console.error);
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+

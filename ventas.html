@@ -1,0 +1,1931 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <link rel="stylesheet" href="css/style.css">  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Ventas - POS</title>
+
+  <style>
+    :root{ --accent:#2b5876; --accent-dark:#1f3f57; --card:#ffffffcc; --muted:#777; }
+    body{font-family: Inter, Arial, sans-serif; margin:0; background:#f4f6f8; color:#222; display:flex; min-height:100vh;}
+    .sidebar{width:220px;background:#fff;border-right:1px solid #e5e7eb;padding:16px 12px;display:flex;flex-direction:column;gap:8px;}
+    .sidebar h3{margin:0 0 10px 0;color:var(--accent);}
+    .nav-link{color:var(--accent);text-decoration:none;padding:10px 12px;border-radius:8px;font-weight:600;display:block;}
+    .nav-link:hover,.nav-link.active{background:#e9eef7;}
+    .content{flex:1;display:flex;flex-direction:column;min-width:0;}
+    header{background:var(--accent); color:#fff; padding:12px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;}
+    header h1{margin:0; font-size:18px; flex:1;}
+    header .right{display:flex; gap:8px; align-items:center;}
+    .branch-picker{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#fff;}
+    .branch-picker select{min-width:160px;padding:6px;border-radius:6px;border:none;color:#1f3f57;font-weight:600;}
+    a.btn, button.btn{background:#fff;color:var(--accent);border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;}
+    .container{display:grid; grid-template-columns: 1fr 420px; gap:18px; padding:18px; max-width:1200px; margin:20px auto;}
+    .card{background:var(--card); border-radius:12px; padding:14px; box-shadow:0 6px 18px rgba(19,24,28,0.06);}
+    #productosList .product{display:flex; justify-content:space-between; gap:12px; padding:10px 6px; border-bottom:1px solid #eee; align-items:center;}
+    #productosList .product strong{display:block;}
+    .expiring{color:#b45309;font-weight:600;}
+    .controls{display:flex;gap:8px; align-items:center; margin-bottom:10px;}
+    .product-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px;}
+    .product-tab{border:1px solid #dbe3ea;background:#fff;color:var(--accent);padding:8px 12px;border-radius:999px;font-weight:700;cursor:pointer;}
+    .product-tab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+    .product-badge{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:700;}
+    input[type="search"], input[type="number"], select, textarea { padding:8px; border-radius:8px; border:1px solid #ddd; font-size:14px; }
+    button.addBtn { background:var(--accent); color:#fff; border-radius:8px; padding:8px 10px; border:none; cursor:pointer; }
+    
+    #cartItems { max-height: 420px; overflow:auto; }
+    .cart-item { display:flex; justify-content:space-between; gap:8px; padding:8px 6px; border-bottom:1px dashed #eee; align-items:center; }
+    .muted { color:var(--muted); font-size:13px; }
+    .small { font-size:13px; color:#444; }
+
+ 
+    @media(max-width:1000px){
+      body{flex-direction:column;}
+      .sidebar{width:auto;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid #e5e7eb;}
+      .container{grid-template-columns:1fr; padding:12px;}
+    }
+
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index:9999; }
+    .modal .box { width:520px; max-width:95%; background:#fff; padding:16px; border-radius:10px; }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <aside class="sidebar">
+    <h3>Caja</h3>
+    <a class="nav-link active" href="ventas.html">Ventas</a>
+    <a class="nav-link" href="historial_ventas.html">Historial ventas</a>
+    <a class="nav-link" href="devoluciones_ventas.html">Anulación de ventas</a>
+    <a class="nav-link" href="historial_devoluciones_ventas.html">Historial de anulaciones</a>
+    <a class="nav-link" href="corte_caja.html">Corte de caja</a>
+  </aside>
+  <div class="content">
+  <header class="app-header">
+    <h1>Ventas / Caja</h1>
+    <div class="right">
+      <div class="branch-picker">
+        <label for="branchSelector">Sucursal</label>
+        <select id="branchSelector"></select>
+      </div>
+      <button id="abrirCajaBtn" class="btn">Abrir Caja</button>
+      <button id="cerrarCajaBtn" class="btn">Cerrar Caja</button>
+      
+    </div>
+  </header>
+
+  <main class="container">
+  
+    <section class="card" id="productosCard">
+      <div class="controls">
+        <input id="q" type="search" placeholder="Buscar producto por nombre, principio activo..." style="flex:1" />
+        <button id="buscar" class="addBtn">Buscar</button>
+      </div>
+      <div class="product-tabs" id="productTabs">
+        <button type="button" class="product-tab active" data-tab="medicamento">Medicamentos</button>
+        <button type="button" class="product-tab" data-tab="combo">Combos</button>
+        <button type="button" class="product-tab" data-tab="servicio">Servicios</button>
+      </div>
+      <div class="controls" style="margin-top:6px;">
+        <input id="barcodeInput" type="text" placeholder="Escanear código de barras (producto)..." style="flex:1" />
+        <button id="barcodeAdd" class="addBtn">Agregar</button>
+      </div>
+      <div id="barcodeStatus" class="muted small" aria-live="polite" aria-atomic="true" style="min-height:1.2em;"></div>
+      <div id="productosList" aria-live="polite">
+        
+        <div class="muted">Cargando productos...</div>
+      </div>
+    </section>
+
+    
+    <aside class="card" id="cartCard">
+      <h3>Carrito</h3>
+      <div id="cartItems">
+        <div class="muted">Carrito vacío</div>
+      </div>
+
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:10px">
+        <div><strong>Total:</strong></div>
+        <div><strong id="cartTotal">Q0.00</strong></div>
+      </div>
+      <div id="discountRow" style="display:none;gap:8px;align-items:center;margin-top:8px;">
+        <label style="min-width:110px;">Descuento (%)</label>
+        <input id="discountPercent" type="number" min="0" max="100" step="0.01" value="0" style="width:120px;" />
+        <div class="muted" id="discountLabel" style="margin-left:auto;"></div>
+      </div>
+
+      <hr style="margin:12px 0">
+
+    
+      <label style="display:block;margin-bottom:6px"><strong>Tipo cliente</strong></label>
+      <select id="cartCustomerType" style="width:100%; margin-bottom:8px;">
+        <option value="consumidor_final">Consumidor Final</option>
+        <option value="nit">NIT</option>
+        <option value="cui">CUI</option>
+      </select>
+
+      <div id="docRow" style="display:none;margin-bottom:8px;">
+        <label>Documento (NIT / CUI)</label>
+        <input id="cartCustomerDocument" placeholder="NIT o CUI" />
+      </div>
+
+      <div class="card" style="background:#f8fafc;margin:8px 0;padding:10px;border-radius:10px;">
+        <strong>Agregar servicio (sin producto)</strong>
+        <div style="display:flex;gap:8px;margin-top:6px;flex-wrap:wrap;">
+          <div style="flex:1;min-width:120px;">
+            <label>Monto (Q)</label>
+            <input id="serviceAmount" type="number" step="0.01" min="0.01" placeholder="0.00" />
+          </div>
+        </div>
+        <div style="margin-top:6px;">
+          <label>Descripción servicio</label>
+          <input id="serviceNote" placeholder="Ej: Consulta médica, honorarios" style="width:100%;" />
+        </div>
+        <div style="margin-top:8px;display:flex;justify-content:flex-end;">
+          <button type="button" id="addServiceBtn" class="addBtn" style="padding:6px 10px;">Agregar al carrito</button>
+        </div>
+      </div>
+
+      
+      <div style="margin-top:6px">
+        <label>Condición de venta</label>
+        <select id="paymentTerms" style="width:100%; margin-bottom:8px;">
+          <option value="contado">Contado</option>
+        </select>
+
+        <label>Método de pago</label>
+        <select id="paymentMethod" style="width:100%; margin-bottom:8px;">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="mixto">Mixto</option>
+        </select>
+      </div>
+
+      <div style="margin-top:12px; display:flex; gap:8px;">
+        <button id="checkoutBtn" class="addBtn" style="flex:1">Cobrar</button>
+        <button id="clearCart" class="btn" style="flex:0 0 110px">Limpiar</button>
+      </div>
+
+      <hr style="margin:12px 0;">
+
+      <h3>Cobros Hospital / Emergencia</h3>
+      <div class="card" style="background:#f8fafc;margin:8px 0;padding:10px;border-radius:10px;">
+        <label>Número de documento</label>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input id="billingDocId" placeholder="Ej: 123" style="flex:1;">
+          <button type="button" id="billingDocSearch" class="addBtn">Buscar</button>
+        </div>
+        <div id="billingDocInfo" class="muted" style="margin-top:6px;">Sin documento cargado.</div>
+        <label style="margin-top:8px;">Facturar con</label>
+        <select id="billingDocCustomerType">
+          <option value="cui">CUI</option>
+          <option value="nit">NIT</option>
+        </select>
+        <label>Número de documento</label>
+        <input id="billingDocCustomerDocument" autocomplete="off" placeholder="CUI del paciente">
+        <label style="margin-top:8px;">Descuento (%)</label>
+        <input id="billingDocDiscount" type="number" min="0" max="100" step="0.01" value="0">
+        <label>Método de pago</label>
+        <select id="billingDocMethod">
+          <option value="efectivo">Efectivo</option>
+          <option value="tarjeta">Tarjeta</option>
+          <option value="transferencia">Transferencia</option>
+        </select>
+        <div style="display:flex;justify-content:flex-end;margin-top:8px;">
+          <button type="button" id="billingDocPay" class="addBtn">Cobrar documento</button>
+        </div>
+      </div>
+
+      <hr style="margin:12px 0;">
+    
+      <h3>Detalles de Caja</h3>
+      <div id="detallesCaja">
+        <div class="muted">Sin caja abierta actualmente.</div>
+      </div>
+    </aside>
+  </main>
+
+
+  <div id="successModal" class="modal" role="dialog" aria-modal="true">
+    <div class="box">
+      <h3>¡Cobro exitoso!</h3>
+      <p id="successMsg">Venta registrada.</p>
+      <div style="display:flex;gap:8px; justify-content:flex-end; margin-top:12px;">
+        <button id="openPDF" class="addBtn">Abrir comprobante PDF</button>
+        <button id="closeModal" class="btn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+ 
+  <div id="abrirCajaModal" class="modal" aria-hidden="true">
+    <div class="box">
+      <h3>Apertura de Caja</h3>
+      <label>Monto Inicial (Q)</label>
+      <input id="montoInicial" type="number" step="0.01" min="0" style="width:100%;margin-bottom:10px;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button id="confirmAbrirCaja" class="addBtn">Abrir</button>
+        <button id="cancelAbrirCaja" class="btn">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  
+  <div id="cashCloseAuthModal" class="modal" aria-hidden="true">
+    <div class="box">
+      <h3 data-i18n="Autorización de administrador">Autorización de administrador</h3>
+      <label data-i18n="Usuario administrador">Usuario administrador</label>
+      <input id="cashCloseAuthUser" type="text" style="width:100%;margin-bottom:10px;" data-i18n-placeholder="Usuario administrador" placeholder="Usuario administrador">
+      <label data-i18n="Contraseña del administrador">Contraseña del administrador</label>
+      <input id="cashCloseAuthPassword" type="password" style="width:100%;margin-bottom:10px;" data-i18n-placeholder="Contraseña del administrador" placeholder="Contraseña del administrador">
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button id="confirmCashCloseAuth" class="addBtn" data-i18n="Validar">Validar</button>
+        <button id="cancelCashCloseAuth" class="btn" data-i18n="Cancelar">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="cerrarCajaModal" class="modal" aria-hidden="true">
+    <div class="box">
+      <h3 data-i18n="Cierre de Caja">Cierre de Caja</h3>
+      <div id="resumenCaja"></div>
+      <label data-i18n="Monto Final (Q)">Monto Final (Q)</label>
+      <input id="montoFinal" type="number" step="0.01" min="0" style="width:100%;margin-bottom:10px;">
+      <div style="display:flex;justify-content:flex-end;gap:8px;">
+        <button id="confirmCerrarCaja" class="addBtn" data-i18n="Cerrar">Cerrar</button>
+        <button id="cancelCerrarCaja" class="btn" data-i18n="Cancelar">Cancelar</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="checkoutModal" class="modal" aria-hidden="true">
+    <div class="box">
+      <h3>Confirmar cobro</h3>
+      <form id="checkoutModalForm">
+        <div id="checkoutModalSummary" class="muted" style="margin-bottom:10px;"></div>
+        <label for="checkoutReceiptName">A nombre de quién saldrá el comprobante</label>
+        <input id="checkoutReceiptName" type="text" required style="width:100%;margin-bottom:10px;" />
+
+        <div id="checkoutCardRow" style="display:none;">
+          <label for="checkoutCardAmount">Monto con tarjeta (Q)</label>
+          <input id="checkoutCardAmount" type="text" inputmode="decimal" style="width:100%;margin-bottom:10px;" />
+        </div>
+
+        <div id="checkoutCashRow" style="display:none;">
+          <label for="checkoutCashAmount">Monto en efectivo (Q)</label>
+          <input id="checkoutCashAmount" type="text" inputmode="decimal" style="width:100%;margin-bottom:10px;" />
+        </div>
+
+        <div id="checkoutReceivedRow" style="display:none;">
+          <label for="checkoutReceivedAmount">Monto recibido (Q)</label>
+          <input id="checkoutReceivedAmount" type="text" inputmode="decimal" style="width:100%;margin-bottom:6px;" />
+          <div id="checkoutChangeHint" class="muted" style="min-height:1.2em;margin-bottom:10px;"></div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button id="checkoutModalCancel" type="button" class="btn">Cancelar</button>
+          <button id="checkoutModalConfirm" type="submit" class="addBtn">Cobrar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+<script>
+ 
+let CART = [];
+let SERVICES = [];
+let barcodeStatusTimeout = null;
+const EXP_WARNED = new Set();
+let USER_ROLE = '';
+let CAJA_ABIERTA = null; 
+let LAST_VENTA_ID = null; 
+let CURRENT_BRANCH = null;
+let BRANCHES = [];
+let LAST_PRODUCTS = [];
+let ACTIVE_PRODUCT_TAB = 'medicamento';
+let BILLING_DOC = null;
+let HANDLERS_BOUND = false;
+let CHECKOUT_IN_PROGRESS = false;
+let BILLING_PAY_IN_PROGRESS = false;
+let CASH_CLOSE_ADMIN_AUTH = null;
+const BRANCH_STORAGE_KEY = 'pos_branch_id';
+let DETALLES_TIMER = null;
+let PRODUCT_REFRESH_TIMER = null;
+
+const money = v => 'Q' + (parseFloat(v||0)).toFixed(2);
+
+function normalizeProductType(value){
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'servicio') return 'servicio';
+  if (raw === 'combo') return 'combo';
+  return 'medicamento';
+}
+
+function productMatchesActiveTab(product){
+  return normalizeProductType(product?.tipo) === ACTIVE_PRODUCT_TAB;
+}
+
+function parseMoney(value){
+  if (value == null) return null;
+  let raw = String(value).trim();
+  if (!raw) return null;
+  raw = raw.replace(/\s/g, '').replace(/[^0-9,.\-]/g, '');
+  if (!raw) return null;
+  const lastComma = raw.lastIndexOf(',');
+  const lastDot = raw.lastIndexOf('.');
+  if (lastComma !== -1 && lastDot !== -1) {
+    if (lastComma > lastDot) {
+      raw = raw.replace(/\./g, '').replace(',', '.');
+    } else {
+      raw = raw.replace(/,/g, '');
+    }
+  } else if (lastComma !== -1) {
+    raw = raw.replace(',', '.');
+  }
+  const num = Number(raw);
+  return Number.isFinite(num) ? num : null;
+}
+
+function getDiscountPercentValue(){
+  const canApplyDiscount = USER_ROLE === 'farmacia' || USER_ROLE === 'superadmin';
+  if (!canApplyDiscount) return 0;
+  const discountInput = document.getElementById('discountPercent');
+  let discountPercent = Number(discountInput?.value || 0);
+  if (!Number.isFinite(discountPercent) || discountPercent < 0) discountPercent = 0;
+  if (discountPercent > 100) discountPercent = 100;
+  return discountPercent;
+}
+
+function roundDiscountedTotal(value, originalTotal = null){
+  const amount = Number(value || 0);
+  const gross = originalTotal != null ? Number(originalTotal || 0) : null;
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const whole = Math.floor(amount);
+  const cents = Number((amount - whole).toFixed(2));
+  let rounded = amount;
+  if (cents > 0) {
+    rounded = cents <= 0.5 ? whole + 0.5 : whole + 1;
+  }
+  if (gross != null && Number.isFinite(gross)) {
+    rounded = Math.min(gross, rounded);
+  }
+  return Number(rounded.toFixed(2));
+}
+
+function getCartGrossTotal(){
+  return CART.reduce((sum, item) => sum + (Number(item.cantidad || 0) * Number(item.precio_unit || 0)), 0);
+}
+
+function getCartNetTotal(){
+  const gross = getCartGrossTotal();
+  const discountPercent = getDiscountPercentValue();
+  let net = gross;
+  if (discountPercent > 0) {
+    const discountAmount = gross * (discountPercent / 100);
+    net = Math.max(0, gross - discountAmount);
+    net = roundDiscountedTotal(net, gross);
+  }
+  return Number(net.toFixed(2));
+}
+
+function syncServicesFromCart(){
+  SERVICES = CART
+    .filter(item => item && item.es_servicio)
+    .map(item => ({
+      monto: Number(item.cantidad || 0) * Number(item.precio_unit || 0),
+      descripcion: String(item.nombre || 'Servicio').trim() || 'Servicio',
+      producto_id: item.producto_id || null
+    }))
+    .filter(item => item.monto > 0);
+}
+
+function setBarcodeStatus(message = '', isError = false, autoClear = true){
+  const el = document.getElementById('barcodeStatus');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = isError ? '#b02' : '';
+  if (barcodeStatusTimeout) {
+    clearTimeout(barcodeStatusTimeout);
+    barcodeStatusTimeout = null;
+  }
+  if (autoClear && message) {
+    barcodeStatusTimeout = setTimeout(() => setBarcodeStatus('', false, false), 4000);
+  }
+}
+
+function escapeHtml(s){ return (s+'').replace(/[&<>"]/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function showModal(id){ const m = document.getElementById(id); if(m){ m.style.display='flex'; m.setAttribute('aria-hidden','false'); } }
+function hideModal(id){ const m = document.getElementById(id); if(m){ m.style.display='none'; m.setAttribute('aria-hidden','true'); } }
+
+function updateCheckoutChangeHint(total, payMethod){
+  const hint = document.getElementById('checkoutChangeHint');
+  if (!hint) return;
+  if (payMethod !== 'efectivo' && payMethod !== 'mixto') {
+    hint.textContent = '';
+    return;
+  }
+  const receivedInput = document.getElementById('checkoutReceivedAmount');
+  const cashInput = document.getElementById('checkoutCashAmount');
+  const baseCash = payMethod === 'mixto'
+    ? parseMoney(cashInput?.value)
+    : Number(total || 0);
+  const received = parseMoney(receivedInput?.value);
+  if (received == null || baseCash == null || !Number.isFinite(baseCash)) {
+    hint.textContent = '';
+    return;
+  }
+  const diff = Number((received - baseCash).toFixed(2));
+  hint.textContent = diff >= 0 ? `Cambio: ${money(diff)}` : `Faltan: ${money(Math.abs(diff))}`;
+}
+
+function collectCheckoutInput({ total, payMethod, askReceived }){
+  return new Promise((resolve) => {
+    const modalId = 'checkoutModal';
+    const form = document.getElementById('checkoutModalForm');
+    const cancelBtn = document.getElementById('checkoutModalCancel');
+    const summary = document.getElementById('checkoutModalSummary');
+    const nameInput = document.getElementById('checkoutReceiptName');
+    const cardRow = document.getElementById('checkoutCardRow');
+    const cashRow = document.getElementById('checkoutCashRow');
+    const receivedRow = document.getElementById('checkoutReceivedRow');
+    const cardInput = document.getElementById('checkoutCardAmount');
+    const cashInput = document.getElementById('checkoutCashAmount');
+    const receivedInput = document.getElementById('checkoutReceivedAmount');
+    const confirmBtn = document.getElementById('checkoutModalConfirm');
+
+    if (!form || !cancelBtn || !summary || !nameInput || !cardRow || !cashRow || !receivedRow || !cardInput || !cashInput || !receivedInput || !confirmBtn) {
+      resolve(null);
+      return;
+    }
+
+    const cleanup = () => {
+      form.onsubmit = null;
+      cancelBtn.onclick = null;
+      receivedInput.oninput = null;
+      cashInput.oninput = null;
+      hideModal(modalId);
+    };
+
+    const finish = (value) => {
+      cleanup();
+      resolve(value);
+    };
+
+    const onCancel = () => finish(null);
+    const onAmountInput = () => updateCheckoutChangeHint(modalTotal, payMethod);
+
+    const onSubmit = (event) => {
+      event.preventDefault();
+
+      const nombreComprobante = (nameInput.value || '').trim();
+      if (!nombreComprobante) {
+        alert('El campo "A nombre de quién saldrá el comprobante" es obligatorio.');
+        nameInput.focus();
+        return;
+      }
+      const effectiveTotal = modalTotal;
+      let cashAmount = 0;
+      let cardAmount = 0;
+      let efectivoRecibido = null;
+      let cambio = null;
+
+      if (payMethod === 'mixto') {
+        const valCard = parseMoney(cardInput.value);
+        const valCash = parseMoney(cashInput.value);
+        if (valCard == null || valCard < 0) {
+          alert('Monto con tarjeta inválido.');
+          cardInput.focus();
+          return;
+        }
+        if (valCash == null || valCash < 0) {
+          alert('Monto en efectivo inválido.');
+          cashInput.focus();
+          return;
+        }
+        const sum = Number((valCard + valCash).toFixed(2));
+        if (Math.abs(sum - effectiveTotal) > 0.01) {
+          alert(`La suma no coincide con el total. Total: Q${effectiveTotal.toFixed(2)} · Ingresado: Q${sum.toFixed(2)}`);
+          return;
+        }
+        cardAmount = Number(valCard.toFixed(2));
+        cashAmount = Number(valCash.toFixed(2));
+        if (askReceived && cashAmount > 0) {
+          const val = parseMoney(receivedInput.value);
+          if (val == null) {
+            alert('Monto recibido inválido.');
+            receivedInput.focus();
+            return;
+          }
+          efectivoRecibido = val;
+          cambio = Number((efectivoRecibido - cashAmount).toFixed(2));
+          if (cambio < 0) {
+            alert('El monto recibido es menor al efectivo a cobrar.');
+            receivedInput.focus();
+            return;
+          }
+        }
+      } else if (payMethod === 'tarjeta') {
+        const valCard = parseMoney(cardInput.value);
+        if (valCard == null || valCard <= 0) {
+          alert('Monto con tarjeta inválido.');
+          cardInput.focus();
+          return;
+        }
+        if (Math.abs(valCard - effectiveTotal) > 0.01) {
+          alert(`El monto con tarjeta debe ser igual al total: Q${effectiveTotal.toFixed(2)}`);
+          cardInput.focus();
+          return;
+        }
+        cardAmount = Number(valCard.toFixed(2));
+      } else {
+        cashAmount = effectiveTotal;
+        if (askReceived) {
+          const val = parseMoney(receivedInput.value);
+          if (val == null) {
+            alert('Monto recibido inválido.');
+            receivedInput.focus();
+            return;
+          }
+          efectivoRecibido = val;
+          cambio = Number((efectivoRecibido - cashAmount).toFixed(2));
+          if (cambio < 0) {
+            alert('El monto recibido es menor al total.');
+            receivedInput.focus();
+            return;
+          }
+        }
+      }
+
+      const receiptTab = openReceiptTab();
+      if (!receiptTab) {
+        alert('El navegador bloqueó la pestaña del comprobante. Permite ventanas emergentes para este sitio.');
+        return;
+      }
+
+      finish({
+        nombreComprobante,
+        note: '',
+        cashAmount,
+        cardAmount,
+        efectivoRecibido,
+        cambio,
+        receiptTab
+      });
+    };
+
+    const modalTotal = Number(getCartNetTotal().toFixed(2));
+    summary.textContent = `Total a cobrar: ${money(modalTotal)} · Método: ${payMethod.charAt(0).toUpperCase() + payMethod.slice(1)}`;
+    nameInput.value = '';
+    cardInput.value = payMethod === 'tarjeta' ? modalTotal.toFixed(2) : '0.00';
+    cashInput.value = payMethod === 'mixto' ? modalTotal.toFixed(2) : '';
+    receivedInput.value = '';
+
+    cardRow.style.display = (payMethod === 'tarjeta' || payMethod === 'mixto') ? 'block' : 'none';
+    cashRow.style.display = payMethod === 'mixto' ? 'block' : 'none';
+    receivedRow.style.display = askReceived && (payMethod === 'efectivo' || payMethod === 'mixto') ? 'block' : 'none';
+    updateCheckoutChangeHint(modalTotal, payMethod);
+
+    form.onsubmit = onSubmit;
+    cancelBtn.onclick = onCancel;
+    receivedInput.oninput = onAmountInput;
+    cashInput.oninput = onAmountInput;
+    showModal(modalId);
+
+    setTimeout(() => {
+      nameInput.focus();
+      nameInput.select();
+    }, 0);
+  });
+}
+
+function normalizeBillingCustomerType(value) {
+  const raw = String(value || '').trim().toLowerCase();
+  if (raw === 'nit') return 'nit';
+  if (raw === 'cui') return 'cui';
+  return '';
+}
+
+function normalizeBillingCustomerDocument(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function applyBillingDocCustomerDefaults(data) {
+  const typeSelect = document.getElementById('billingDocCustomerType');
+  const docInput = document.getElementById('billingDocCustomerDocument');
+  if (!typeSelect || !docInput) return;
+
+  const storedType = normalizeBillingCustomerType(data?.doc?.customer_doc_type);
+  const storedValue = normalizeBillingCustomerDocument(data?.doc?.customer_doc_value);
+  const clientDocument = normalizeBillingCustomerDocument(data?.client?.documento);
+  const selectedType = storedType || 'cui';
+
+  typeSelect.value = selectedType;
+  if (selectedType === 'cui') {
+    const value = storedValue || clientDocument;
+    docInput.value = value;
+    docInput.placeholder = 'CUI del paciente';
+    docInput.dataset.autoFill = value && value === clientDocument ? '1' : '0';
+    return;
+  }
+
+  docInput.value = storedType === 'nit' ? storedValue : '';
+  docInput.placeholder = 'NIT para facturación';
+  docInput.dataset.autoFill = '0';
+}
+
+function resetCheckoutSelectionDefaults() {
+  const customerType = document.getElementById('cartCustomerType');
+  if (customerType) customerType.value = 'consumidor_final';
+  const customerDocument = document.getElementById('cartCustomerDocument');
+  if (customerDocument) customerDocument.value = '';
+  const docRow = document.getElementById('docRow');
+  if (docRow) docRow.style.display = 'none';
+  const paymentMethod = document.getElementById('paymentMethod');
+  if (paymentMethod) paymentMethod.value = 'efectivo';
+}
+
+function resetBillingDocPaymentForm() {
+  const idInput = document.getElementById('billingDocId');
+  if (idInput) idInput.value = '';
+  const discountInput = document.getElementById('billingDocDiscount');
+  if (discountInput) discountInput.value = '0';
+  const methodSelect = document.getElementById('billingDocMethod');
+  if (methodSelect) methodSelect.value = 'efectivo';
+  const docInput = document.getElementById('billingDocCustomerDocument');
+  if (docInput) {
+    docInput.value = '';
+    docInput.dataset.autoFill = '0';
+  }
+  BILLING_DOC = null;
+  renderBillingDoc(null);
+}
+
+function syncBillingDocCustomerFields() {
+  const typeSelect = document.getElementById('billingDocCustomerType');
+  const docInput = document.getElementById('billingDocCustomerDocument');
+  if (!typeSelect || !docInput) return;
+  const type = normalizeBillingCustomerType(typeSelect.value) || 'cui';
+  const clientDocument = normalizeBillingCustomerDocument(BILLING_DOC?.client?.documento);
+  const storedType = normalizeBillingCustomerType(BILLING_DOC?.doc?.customer_doc_type);
+  const storedValue = normalizeBillingCustomerDocument(BILLING_DOC?.doc?.customer_doc_value);
+
+  if (type === 'cui') {
+    docInput.placeholder = 'CUI del paciente';
+    if (!docInput.value || docInput.dataset.autoFill === '1') {
+      const value = storedType === 'cui' && storedValue ? storedValue : clientDocument;
+      docInput.value = value;
+      docInput.dataset.autoFill = value && value === clientDocument ? '1' : '0';
+    }
+    return;
+  }
+
+  docInput.placeholder = 'NIT para facturación';
+  if (docInput.dataset.autoFill === '1') {
+    docInput.value = storedType === 'nit' ? storedValue : '';
+  }
+  docInput.dataset.autoFill = '0';
+}
+
+function renderBillingDoc(data){
+  const info = document.getElementById('billingDocInfo');
+  const payBtn = document.getElementById('billingDocPay');
+  BILLING_DOC = data;
+  if (!info) return;
+  if (!data || !data.doc) {
+    info.textContent = 'Sin documento cargado.';
+    applyBillingDocCustomerDefaults(null);
+    if (payBtn) payBtn.disabled = true;
+    return;
+  }
+  const doc = data.doc || {};
+  const admission = data.admission || {};
+  const client = data.client || {};
+  const customerType = normalizeBillingCustomerType(doc.customer_doc_type || (client.documento ? 'cui' : ''));
+  const customerDocument = normalizeBillingCustomerDocument(
+    doc.customer_doc_value || (customerType === 'cui' ? client.documento : '')
+  );
+  const billingLabel = customerType
+    ? `${customerType.toUpperCase()}: ${customerDocument || '--'}`
+    : (customerDocument || 'Pendiente');
+  const totals = data.totals || {};
+  const tipo = String(doc.tipo || admission.tipo || 'hospitalizacion').toLowerCase();
+  const tipoLabel = tipo === 'emergencia' ? 'Emergencia' : 'Hospitalización';
+  const status = String(doc.status || '').toLowerCase();
+  const statusLabel = status === 'paid' ? 'PAGADO' : 'PENDIENTE';
+  const balance = totals.balance != null ? Number(totals.balance) : null;
+  const totalLabel = totals.net != null ? totals.net : (totals.charges != null ? totals.charges : 0);
+  info.innerHTML = `
+    <div><strong>Documento:</strong> #${doc.id || '--'} (${statusLabel})</div>
+    <div><strong>Paciente:</strong> ${escapeHtml(client.nombre || '--')}</div>
+    <div><strong>Tipo:</strong> ${tipoLabel}</div>
+    <div><strong>Facturación:</strong> ${escapeHtml(billingLabel)}</div>
+    <div><strong>Total:</strong> ${money(totalLabel)}</div>
+    <div><strong>Saldo:</strong> ${balance != null ? money(balance) : '--'}</div>
+  `;
+  applyBillingDocCustomerDefaults(data);
+  if (payBtn) payBtn.disabled = status === 'paid' || (balance != null && balance <= 0);
+}
+
+async function fetchBillingDoc(){
+  const input = document.getElementById('billingDocId');
+  const docId = input ? Number(input.value || 0) : 0;
+  if (!docId) {
+    renderBillingDoc(null);
+    return alert('Ingrese un número de documento válido.');
+  }
+  try {
+    const res = await fetch(`api/hospital_billing?action=get_doc&doc_id=${encodeURIComponent(docId)}`, { credentials:'include' });
+    const data = await res.json();
+    if (!res.ok || !data.ok) {
+      renderBillingDoc(null);
+      return alert(data.error || 'No se encontró el documento.');
+    }
+    renderBillingDoc(data);
+  } catch (err) {
+    renderBillingDoc(null);
+    alert('Error consultando documento.');
+  }
+}
+
+async function payBillingDoc(){
+  if (!BILLING_DOC || !BILLING_DOC.doc) {
+    return alert('Busca un documento antes de cobrar.');
+  }
+  const docId = Number(BILLING_DOC.doc.id || 0);
+  if (!docId) return alert('Documento inválido.');
+  const discountRaw = document.getElementById('billingDocDiscount')?.value;
+  const discount = discountRaw !== '' && discountRaw != null ? Number(discountRaw) : 0;
+  const method = document.getElementById('billingDocMethod')?.value || 'efectivo';
+  const customerType = normalizeBillingCustomerType(document.getElementById('billingDocCustomerType')?.value);
+  let customerDocument = normalizeBillingCustomerDocument(
+    document.getElementById('billingDocCustomerDocument')?.value
+  );
+  if (customerType === 'cui' && !customerDocument) {
+    customerDocument = normalizeBillingCustomerDocument(BILLING_DOC?.client?.documento);
+  }
+  if (!customerType) return alert('Seleccione si la facturación será con NIT o CUI.');
+  if (!customerDocument) return alert(`Ingrese el ${customerType.toUpperCase()} para el cobro.`);
+  const branchValue = document.getElementById('branchSelector')?.value;
+  const branchId = branchValue ? Number(branchValue) : (CURRENT_BRANCH || null);
+  const payload = {
+    doc_id: docId,
+    discount_percent: discount,
+    method,
+    branch_id: branchId,
+    customer_doc_type: customerType,
+    customer_doc_value: customerDocument
+  };
+  try {
+    const res = await fetch('api/hospital_billing?action=pay_doc', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      credentials:'include',
+      body: JSON.stringify(payload)
+    });
+    const out = await res.json();
+    if(!res.ok || !out.ok){
+      return alert(out.error || 'Error al cobrar documento');
+    }
+    LAST_VENTA_ID = out.sale_id || null;
+    if (typeof showSuccess === 'function') {
+      showSuccess(out.sale_id, out.total_pagado || out.neto || 0);
+    } else {
+      alert(`Cobro registrado. Venta #${out.sale_id || '--'}`);
+    }
+    resetBillingDocPaymentForm();
+  } catch (err) {
+    alert('Error al cobrar documento');
+  }
+}
+
+function applyCashieeView(){
+  const label = document.querySelector('label[for="branchSelector"]');
+  if (label) label.textContent = 'Emergencia';
+  const sel = document.getElementById('branchSelector');
+  if (sel) {
+    sel.disabled = true;
+    const opt = Array.from(sel.options || []).find(o => Number(o.value) === 2);
+    if (opt) sel.value = opt.value;
+  }
+}
+
+async function authCheck(){
+  try{
+    const r = await fetch('api/auth_check', { credentials:'include' });
+    const d = await r.json();
+    if(!d.ok){ window.location = 'login.html'; return; }
+    USER_ROLE = (d.user.rol || '').toLowerCase();
+
+    if(USER_ROLE === 'cashiee') {
+      window.location = 'ventas_emergencia.html';
+      return;
+    }
+    if(!(USER_ROLE === 'cajero' || USER_ROLE === 'cashier' || USER_ROLE === 'farmacia' || USER_ROLE === 'superadmin')) {
+      alert('No tienes permiso para acceder a Ventas. Redirigiendo al inventario.');
+      window.location = 'inventario.html';
+      return;
+    }
+    await init();
+  }catch(e){
+    console.error('auth error', e);
+    window.location = 'login.html';
+  }
+}
+
+async function loadBranches(){
+  try{
+    const res = await fetch('api/branches', { credentials:'include' });
+    if(!res.ok) throw new Error('No se pudo cargar sucursales');
+    let data = await res.json();
+    BRANCHES = Array.isArray(data) ? data : [];
+    if (['cashier','cajero','farmacia'].includes(USER_ROLE)) {
+      BRANCHES = BRANCHES.filter(b => {
+        const name = (b.name || '').toLowerCase();
+        return name.includes('principal');
+      });
+    }
+    if (USER_ROLE === 'cashiee') {
+      BRANCHES = BRANCHES.filter(b=> Number(b.id) === 2);
+    }
+    const select = document.getElementById('branchSelector');
+    if (select) {
+      select.innerHTML = BRANCHES.length ? '' : '<option value="">Sin sucursales</option>';
+      if (BRANCHES.length) {
+        const placeholder = document.createElement('option');
+        placeholder.value = '';
+        placeholder.textContent = 'Seleccione...';
+        select.appendChild(placeholder);
+      }
+      BRANCHES.forEach(b=>{
+        const opt = document.createElement('option');
+        opt.value = b.id;
+        opt.textContent = b.name;
+        select.appendChild(opt);
+      });
+    }
+    if (!BRANCHES.length) {
+      alert('No hay sucursales disponibles para su rol.');
+      setBranch(null, false);
+      return;
+    }
+    let stored = parseInt(localStorage.getItem(BRANCH_STORAGE_KEY) || '', 10);
+    if (!stored || !BRANCHES.some(b => Number(b.id) === stored)) {
+      stored = BRANCHES[0] ? Number(BRANCHES[0].id) : null;
+    }
+    setBranch(stored, false);
+  }catch(e){
+    console.error('Error cargando sucursales', e);
+    alert('No se pudieron cargar las sucursales para el punto de venta');
+  }
+}
+
+function setBranch(branchId, reload = true){
+  const prevBranch = CURRENT_BRANCH;
+  CURRENT_BRANCH = branchId && branchId > 0 ? Number(branchId) : null;
+  const select = document.getElementById('branchSelector');
+  if (select) {
+    select.value = CURRENT_BRANCH ? String(CURRENT_BRANCH) : '';
+  }
+  if (CURRENT_BRANCH) {
+    localStorage.setItem(BRANCH_STORAGE_KEY, String(CURRENT_BRANCH));
+  }
+  if (reload && CURRENT_BRANCH !== prevBranch) {
+    CART = [];
+    SERVICES = [];
+    renderCart();
+    EXP_WARNED.clear();
+    loadProductos(document.getElementById('q').value.trim());
+  }
+}
+
+
+function normalizeProductPayload(payload){
+  if (Array.isArray(payload)) return payload;
+  if (payload && Array.isArray(payload.items)) return payload.items;
+  return [];
+}
+
+function buildComboStockAlert(product) {
+  const missing = Array.isArray(product?.stock_missing_components)
+    ? product.stock_missing_components.filter(Boolean)
+    : [];
+  if (!missing.length) return 'No hay stock disponible para este producto';
+  if (missing.length === 1) {
+    return `El producto ${missing[0]} que pertenece a este combo no tiene stock.`;
+  }
+  return `Los productos ${missing.join(', ')} que pertenecen a este combo no tienen stock.`;
+}
+
+function renderProductos(items){
+  const list = document.getElementById('productosList');
+  if (!list) return;
+  const filteredItems = (items || []).filter(productMatchesActiveTab);
+  if(!filteredItems || filteredItems.length === 0){
+    list.innerHTML = '<div class="muted">No se encontraron productos.</div>';
+    return;
+  }
+  const html = filteredItems.map((p) => {
+    const type = normalizeProductType(p.tipo);
+    const badgeColor = type === 'servicio' ? '#d1fae5;color:#065f46;' : type === 'combo' ? '#ede9fe;color:#5b21b6;' : '#dbeafe;color:#1d4ed8;';
+    const badgeLabel = type === 'servicio' ? 'Servicio' : type === 'combo' ? 'Combo' : 'Medicamento';
+    let expDays = null;
+    let expLabel = '';
+    let expClass = 'muted';
+    const hasExpiry = type === 'medicamento' && Boolean(p.next_expiry);
+    if (hasExpiry) {
+      const expiryDate = new Date(p.next_expiry);
+      if (!Number.isNaN(expiryDate.getTime())) {
+        const now = new Date();
+        const diff = expiryDate.getTime() - now.getTime();
+        expDays = Math.max(0, Math.round(diff / (24 * 60 * 60 * 1000)));
+        expClass = expDays <= 30 ? 'expiring' : 'muted';
+      }
+      expLabel = p.next_expiry;
+      if (expDays != null && !Number.isNaN(expDays)) {
+        expLabel += ` · ${expDays} días`;
+      }
+    }
+    const price = p.precio_venta_actual != null ? Number(p.precio_venta_actual) : Number(p.precio_publico || 0);
+    const stockLine = type === 'servicio'
+      ? `Sin control de stock · ${money(price)}`
+      : `${Number(p.stock || 0)} disponibles · ${money(price)}`;
+    const comboComponents = type === 'combo' && Array.isArray(p.combo_components) && p.combo_components.length
+      ? `<div class="muted small">${p.combo_components.map((component) => `${escapeHtml(component.nombre_comercial || ('#' + component.component_product_id))} x${component.quantity}`).join(' · ')}</div>`
+      : '';
+    const comboStockIssue = type === 'combo' && Array.isArray(p.stock_missing_components) && p.stock_missing_components.length
+      ? `<div class="small" style="color:#b91c1c;">Sin stock por: ${escapeHtml(p.stock_missing_components.join(', '))}</div>`
+      : '';
+    return `
+      <div class="product">
+        <div>
+          <strong>${escapeHtml(p.nombre_comercial)}</strong> <span class="product-badge" style="${badgeColor}">${badgeLabel}</span>
+          <div class="muted small">${p.presentacion || ''} ${p.principio_activo ? ' - ' + p.principio_activo : ''}</div>
+          <div class="small">${stockLine}</div>
+          ${comboComponents}
+          ${comboStockIssue}
+          ${hasExpiry ? `<div class="small ${expClass}">Vence: ${expLabel}</div>` : ''}
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end;">
+          <button class="addBtn" data-id="${p.id}" data-precio="${price}">Agregar</button>
+        </div>
+      </div>`;
+  }).join('');
+  list.innerHTML = html;
+}
+
+async function fetchProductos(q=''){
+  const params = new URLSearchParams();
+  if (q) params.set('q', q);
+  if (CURRENT_BRANCH) params.set('branch_id', CURRENT_BRANCH);
+  const url = 'api/productos' + (params.toString() ? '?'+params.toString() : '');
+  const res = await fetch(url, { credentials:'include' });
+  if(!res.ok){
+    if(res.status === 401) window.location = 'login.html';
+    throw new Error('Error al obtener productos');
+  }
+  const payload = await res.json();
+  return normalizeProductPayload(payload);
+}
+
+async function loadProductos(q='', opts = {}){
+  const list = document.getElementById('productosList');
+  const silent = Boolean(opts.silent);
+  if (!CURRENT_BRANCH) {
+    list.innerHTML = '<div class="muted">Seleccione una sucursal para listar productos.</div>';
+    return;
+  }
+  if (!silent || !list.dataset.loadedOnce) {
+    list.innerHTML = '<div class="muted">Cargando productos...</div>';
+  }
+  try{
+    const items = await fetchProductos(q);
+    LAST_PRODUCTS = items;
+    renderProductos(items);
+    list.dataset.loadedOnce = '1';
+  }catch(e){
+    console.error(e);
+    if (!silent || !list.dataset.loadedOnce) {
+      list.innerHTML = '<div class="muted">Error cargando productos</div>';
+    }
+  }
+}
+
+async function scanBarcode(code){
+  const raw = String(code || '').trim();
+  if (!raw) return;
+  if (!CURRENT_BRANCH) {
+    alert('Seleccione una sucursal antes de escanear');
+    return;
+  }
+  setBarcodeStatus('Buscando producto...');
+  try{
+    const params = new URLSearchParams({ code: raw, branch_id: CURRENT_BRANCH });
+    const res = await fetch(`api/barcode_lookup?${params.toString()}`, { credentials:'include' });
+    const data = await res.json();
+    if(!res.ok || !data || !data.ok){
+      setBarcodeStatus((data && data.error) ? data.error : 'Producto no disponible', true);
+      alert((data && data.error) ? data.error : 'Producto no disponible');
+      return;
+    }
+    const prod = data.product || {};
+    if (!prod.id) {
+      setBarcodeStatus('No se pudo resolver el producto', true);
+      alert('No se pudo resolver el producto');
+      return;
+    }
+    addToCart(prod);
+    setBarcodeStatus('Producto agregado al carrito');
+  }catch(err){
+    console.error('barcode lookup', err);
+    setBarcodeStatus('Error buscando el producto', true);
+    alert('Error buscando el producto');
+  }
+}
+
+function renderCart(){
+  syncServicesFromCart();
+  const el = document.getElementById('cartItems');
+  el.innerHTML = '';
+  if(CART.length === 0){
+    el.innerHTML = '<div class="muted">Carrito vacío</div>';
+    document.getElementById('cartTotal').innerText = money(0);
+    const discountRow = document.getElementById('discountRow');
+    if (discountRow) discountRow.style.display = 'none';
+    const discountLabel = document.getElementById('discountLabel');
+    if (discountLabel) discountLabel.textContent = '';
+    return;
+  }
+  let total = 0;
+  CART.forEach((it, idx)=>{
+    const sub = (it.cantidad * parseFloat(it.precio_unit || 0));
+    total += sub;
+    const row = document.createElement('div');
+    row.className = 'cart-item';
+    const loteText = it.lot_number ? `Lote: ${escapeHtml(it.lot_number)}` : '';
+    const vencText = it.lot_expiry ? ` · Vence ${escapeHtml(it.lot_expiry)}` : '';
+    const lotLine = (loteText || vencText) ? `<div class="muted small">${loteText}${vencText}</div>` : '';
+    row.innerHTML = `
+      <div style="max-width:60%"><strong>${escapeHtml(it.nombre)}</strong><div class="muted small">x ${it.cantidad}</div>${lotLine}</div>
+      <div style="text-align:right;">
+        <div>${money(sub)}</div>
+        <div style="margin-top:6px">
+          <button class="btn dec" data-idx="${idx}">-</button>
+          <button class="btn inc" data-idx="${idx}">+</button>
+          <button class="btn rm" data-idx="${idx}">Eliminar</button>
+        </div>
+      </div>`;
+    el.appendChild(row);
+  });
+  const discountInput = document.getElementById('discountPercent');
+  const discountRow = document.getElementById('discountRow');
+  const discountLabel = document.getElementById('discountLabel');
+  const canApplyDiscount = USER_ROLE === 'farmacia' || USER_ROLE === 'superadmin';
+  if (discountRow && canApplyDiscount) {
+    discountRow.style.display = 'flex';
+  } else if (discountRow) {
+    discountRow.style.display = 'none';
+  }
+  const discountPercent = getDiscountPercentValue();
+  const totalWithDiscount = getCartNetTotal();
+  const discountAmount = Math.max(0, total - totalWithDiscount);
+  document.getElementById('cartTotal').innerText = money(totalWithDiscount);
+  if (discountLabel && discountRow && discountRow.style.display !== 'none') {
+    discountLabel.textContent = discountPercent > 0 ? `Descuento: -${money(discountAmount)}` : '';
+  }
+}
+
+function startProductAutoRefresh(){
+  if (PRODUCT_REFRESH_TIMER) clearInterval(PRODUCT_REFRESH_TIMER);
+  PRODUCT_REFRESH_TIMER = setInterval(async () => {
+    if (document.hidden) return;
+    if (!CURRENT_BRANCH) return;
+    const q = (document.getElementById('q')?.value || '').trim();
+    try {
+      await loadProductos(q, { silent: true });
+    } catch (_) {}
+  }, 30000);
+}
+
+function openReceiptTab(){
+  const tab = window.open('about:blank', 'hhg-sale-receipt');
+  if (!tab) return null;
+  try {
+    tab.document.write('<!doctype html><html><head><title>Comprobante</title></head><body style="font-family:Arial,sans-serif;padding:24px;">Generando comprobante...</body></html>');
+    tab.document.close();
+  } catch (_) {}
+  return tab;
+}
+
+function closeReceiptTab(tab){
+  if (!tab || tab.closed) return;
+  try { tab.close(); } catch (_) {}
+}
+
+function addToCart(prod){
+  const type = normalizeProductType(prod.tipo);
+  const lotNumber = prod.lot_number ? String(prod.lot_number).trim() : '';
+  const exists = CART.find(x => x.producto_id == prod.id && String(x.lot_number || '') === lotNumber);
+  if (exists) {
+    const max = Number(exists.stock || 0);
+    if (type === 'servicio' || exists.es_servicio || exists.stock == null || exists.cantidad < max) {
+      exists.cantidad += 1;
+    } else {
+      alert(type === 'combo' ? buildComboStockAlert(exists) : 'No hay stock disponible para este producto');
+      return;
+    }
+  } else {
+    const stock = prod.stock == null ? null : parseFloat(prod.stock || 0);
+    if (type !== 'servicio' && (!stock || stock <= 0)) {
+      alert(type === 'combo' ? buildComboStockAlert(prod) : 'No hay stock disponible para este producto');
+      return;
+    }
+    if (type === 'medicamento' && prod.expiring_soon && !EXP_WARNED.has(prod.id)) {
+      const label = prod.next_expiry ? ` (vence ${prod.next_expiry})` : '';
+      alert(`Producto con lote próximo a vencer${label}.`);
+      EXP_WARNED.add(prod.id);
+    }
+    const price = (prod.precio_venta_actual != null ? Number(prod.precio_venta_actual) : Number(prod.precio_publico || 0));
+    CART.push({
+      producto_id: prod.id,
+      nombre: prod.nombre_comercial,
+      cantidad: 1,
+      precio_unit: price,
+      stock: stock,
+      lot_number: lotNumber || null,
+      lot_expiry: prod.lot_expiry || prod.next_expiry || null,
+      stock_missing_components: Array.isArray(prod.stock_missing_components) ? prod.stock_missing_components.slice() : [],
+      es_servicio: type === 'servicio',
+      tipo: type
+    });
+  }
+  renderCart();
+}
+
+function clearCart(){
+  if(!confirm('Limpiar carrito?')) return;
+  CART = [];
+  SERVICES = [];
+  const discountInput = document.getElementById('discountPercent');
+  if (discountInput) discountInput.value = '0';
+  renderCart();
+}
+
+function mostrarDetallesCaja(data){
+  const div = document.getElementById('detallesCaja');
+  if(!data){
+    div.innerHTML = '<div class="muted">Sin caja abierta actualmente.</div>';
+    return;
+  }
+  const branchName = BRANCHES.find(b=>Number(b.id)===Number(data.branch_id))?.name || '';
+  const totalVentas = data.total_ventas_neto != null ? Number(data.total_ventas_neto) : Number(data.total_ventas || 0);
+  div.innerHTML = `
+    <p><strong>Fecha Apertura:</strong> ${data.fecha_apertura}</p>
+    <p><strong>Monto Inicial:</strong> ${money(data.monto_inicial)}</p>
+    <p><strong>Total Ventas:</strong> ${money(totalVentas)}</p>
+    <p><strong>Monto Final:</strong> ${data.monto_final ? money(data.monto_final) : 'Pendiente'}</p>
+    <p><strong>Sucursal:</strong> ${branchName || '--'}</p>
+  `;
+}
+
+async function refreshDetallesCaja(){
+  if (!CURRENT_BRANCH) {
+    CAJA_ABIERTA = null;
+    mostrarDetallesCaja(null);
+    return;
+  }
+  try{
+    const [cajaRes, resumen] = await Promise.all([
+      fetch(`api/current_caja?branch_id=${CURRENT_BRANCH}`, { credentials:'include' }).then(r=>r.ok?r.json():null),
+      obtenerResumenCaja()
+    ]);
+    if (cajaRes && cajaRes.caja) {
+      CAJA_ABIERTA = cajaRes.caja;
+      const devolTotal = Number(resumen?.devoluciones_ventas_total || 0);
+      const totalVentas = Number(resumen?.total_ventas || 0);
+      const neto = totalVentas - devolTotal;
+      mostrarDetallesCaja({
+        ...CAJA_ABIERTA,
+        total_ventas_neto: neto
+      });
+    } else {
+      CAJA_ABIERTA = null;
+      mostrarDetallesCaja(null);
+    }
+  }catch(e){
+    console.warn('No se pudo refrescar detalles de caja', e);
+  }
+}
+
+function startDetallesTimer(){
+  if (DETALLES_TIMER) clearInterval(DETALLES_TIMER);
+  DETALLES_TIMER = setInterval(refreshDetallesCaja, 10000);
+}
+
+function stopDetallesTimer(){
+  if (DETALLES_TIMER) clearInterval(DETALLES_TIMER);
+  DETALLES_TIMER = null;
+}
+
+async function loadCurrentCaja(){
+  if (!CURRENT_BRANCH) {
+    CAJA_ABIERTA = null;
+    mostrarDetallesCaja(null);
+    stopDetallesTimer();
+    return;
+  }
+  try{
+    const res = await fetch(`api/current_caja?branch_id=${CURRENT_BRANCH}`, { credentials:'include' });
+    if(!res.ok) return; 
+    const d = await res.json();
+    if(d && d.caja){
+      CAJA_ABIERTA = d.caja;
+      refreshDetallesCaja();
+      startDetallesTimer();
+    }else{
+      CAJA_ABIERTA = null;
+      mostrarDetallesCaja(null);
+      stopDetallesTimer();
+    }
+  }catch(e){
+    console.warn('No se pudo obtener caja actual', e);
+  }
+}
+
+
+async function abrirCaja(monto){
+  try{
+    if (!CURRENT_BRANCH) {
+      alert('Seleccione una sucursal antes de abrir caja');
+      return { ok:false };
+    }
+    const res = await fetch('api/cash_open',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({monto_inicial: monto, branch_id: CURRENT_BRANCH}),
+      credentials:'include'
+    });
+    let d = null;
+    try{
+      d = await res.json();
+    }catch(_){ d = null; }
+
+    
+    if (!res.ok || (d && d.ok === false)) {
+      const msg = (d && (d.error || d.message)) || 'Ya existe una caja abierta';
+      throw new Error(msg);
+    }
+
+    
+    CAJA_ABIERTA = d && d.caja ? d.caja : CAJA_ABIERTA;
+    mostrarDetallesCaja(CAJA_ABIERTA);
+    return { ok:true, caja: CAJA_ABIERTA };
+  }catch(e){
+    console.error('Error abrirCaja:', e);
+    return { ok:false, error: e.message || 'Error al abrir caja' };
+  }
+}
+
+
+async function obtenerResumenCaja(){
+  try{
+    const url = CURRENT_BRANCH
+      ? `api/resumen_caja?branch_id=${encodeURIComponent(CURRENT_BRANCH)}`
+      : 'api/resumen_caja';
+    const res = await fetch(url, { credentials:'include' });
+    if(!res.ok) throw new Error('Error al obtener resumen');
+    return await res.json();
+  }catch(e){
+    console.error(e);
+    return null;
+  }
+}
+
+
+
+async function cerrarCaja(monto_final) {
+  const tText = (key) => ((window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key);
+  const readNumber = (...selectors) => {
+    for (const sel of selectors) {
+      const el = document.querySelector(sel);
+      if (!el) continue;
+      const raw = (typeof el.value !== 'undefined') ? el.value : el.textContent;
+      const n = parseMoney(raw);
+      if (n != null) return n;
+    }
+    return null;
+  };
+
+  try {
+    let mf = (monto_final != null) ? Number(monto_final) :
+             readNumber('#montoCierre', '#monto_final', '[name="monto_cierre"]', '#montoFinal', '.monto-cierre');
+
+    let tv = readNumber('#totalVentas', '#total_ventas', '[name="total_ventas"]', '.total-ventas');
+
+    let dif = (mf != null && tv != null) ? Number((mf - tv).toFixed(2)) : null;
+
+    const payload = {};
+    if (!CURRENT_BRANCH) {
+      throw new Error(tText('Seleccione una sucursal antes de cerrar la caja'));
+    }
+    if (!CASH_CLOSE_ADMIN_AUTH || !CASH_CLOSE_ADMIN_AUTH.authorized) {
+      throw new Error(tText('Debe autorizar el cierre con un administrador antes de continuar'));
+    }
+    if (mf != null)  payload.monto_final = mf;
+    if (tv != null)  payload.total_ventas = tv;
+    if (dif != null) payload.diferencia = dif;
+    if (CAJA_ABIERTA && CAJA_ABIERTA.id) payload.caja_id = CAJA_ABIERTA.id;
+    payload.branch_id = CURRENT_BRANCH;
+
+    const res = await fetch('api/cash_close', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(payload)
+    });
+
+    const ct = (res.headers.get('content-type') || '').toLowerCase();
+    let d;
+    if (ct.includes('application/json')) {
+      d = await res.json();
+    } else {
+      const text = await res.text();
+      d = { ok: false, error: text };
+    }
+
+    if (!res.ok || !d || !d.ok) {
+      throw new Error((d && d.error) ? d.error : 'Error al cerrar caja');
+    }
+
+    CASH_CLOSE_ADMIN_AUTH = null;
+    try { if (typeof CAJA_ABIERTA !== 'undefined') CAJA_ABIERTA = null; } catch(_) {}
+    try { if (typeof mostrarDetallesCaja === 'function') mostrarDetallesCaja(null); } catch(_) {}
+
+    return { ok: true, cierre_id: d.cierre_id || null };
+  } catch (e) {
+    console.error(e);
+    return { ok: false, error: e && e.message ? e.message : 'Error' };
+  }
+}
+
+async function authorizeCashCloseAdmin(username, password) {
+  const tText = (key) => ((window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key);
+  const adminUsername = String(username || '').trim();
+  const adminPassword = String(password || '');
+  if (!adminUsername) {
+    throw new Error(tText('Ingrese usuario administrador'));
+  }
+  if (!adminPassword) {
+    throw new Error(tText('Ingrese contraseña de administrador'));
+  }
+
+  const res = await fetch('api/cash_close_authorize', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({
+      admin_username: adminUsername,
+      admin_password: adminPassword
+    })
+  });
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
+  const data = ct.includes('application/json')
+    ? await res.json().catch(() => null)
+    : { ok: false, error: await res.text() };
+  if (!res.ok || !data || !data.ok) {
+    throw new Error((data && data.error) ? data.error : tText('Error al validar administrador'));
+  }
+
+  CASH_CLOSE_ADMIN_AUTH = {
+    authorized: true,
+    username: data.authorized_by || adminUsername
+  };
+  return data;
+}
+
+async function openCashCloseSummaryModal() {
+  const resumen = await obtenerResumenCaja();
+  const devolTotal = Number(resumen?.devoluciones_ventas_total || 0);
+  const devolCount = Number(resumen?.devoluciones_ventas_count || 0);
+  const neto = Number(resumen?.total_ventas || 0) - devolTotal;
+  const resumenDiv = document.getElementById('resumenCaja');
+  const devolLabel = devolCount ? `${devolCount} (${money(devolTotal)})` : money(devolTotal);
+  resumenDiv.innerHTML = `
+      <p><strong>Total Ventas:</strong> ${money(resumen?.total_ventas || 0)}</p>
+      <p><strong>Anulaciones de ventas:</strong> ${devolLabel}</p>
+      <p><strong>Total Neto:</strong> ${money(neto)}</p>
+      <p><strong>Monto Inicial:</strong> ${money(resumen?.monto_inicial || 0)}</p>
+    `;
+  document.getElementById('montoFinal').value = (resumen?.total_ventas != null) ? neto : '';
+  showModal('cerrarCajaModal');
+}
+
+function setupHandlers(){
+  if (HANDLERS_BOUND) return;
+  HANDLERS_BOUND = true;
+
+  const branchSelect = document.getElementById('branchSelector');
+  if (branchSelect) {
+    branchSelect.addEventListener('change', (e)=>{
+      if (USER_ROLE === 'cashiee') { branchSelect.value = CURRENT_BRANCH || ''; return; }
+      const val = e.target.value ? parseInt(e.target.value, 10) : null;
+      setBranch(val);
+    });
+  }
+
+  const billingSearchBtn = document.getElementById('billingDocSearch');
+  if (billingSearchBtn) billingSearchBtn.addEventListener('click', ()=>fetchBillingDoc());
+  const billingPayBtn = document.getElementById('billingDocPay');
+  if (billingPayBtn) {
+    billingPayBtn.addEventListener('click', async ()=>{
+      if (BILLING_PAY_IN_PROGRESS) return;
+      BILLING_PAY_IN_PROGRESS = true;
+      const prev = billingPayBtn.textContent;
+      billingPayBtn.disabled = true;
+      billingPayBtn.textContent = 'Procesando...';
+      try {
+        await payBillingDoc();
+      } finally {
+        BILLING_PAY_IN_PROGRESS = false;
+        billingPayBtn.disabled = false;
+        billingPayBtn.textContent = prev || 'Cobrar documento';
+      }
+    });
+  }
+  const billingInput = document.getElementById('billingDocId');
+  if (billingInput) {
+    billingInput.addEventListener('keydown', (e)=>{
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        fetchBillingDoc();
+      }
+    });
+  }
+  const billingCustomerType = document.getElementById('billingDocCustomerType');
+  if (billingCustomerType) {
+    billingCustomerType.addEventListener('change', ()=>syncBillingDocCustomerFields());
+  }
+  const billingCustomerDocument = document.getElementById('billingDocCustomerDocument');
+  if (billingCustomerDocument) {
+    billingCustomerDocument.addEventListener('input', ()=>{
+      billingCustomerDocument.dataset.autoFill = '0';
+    });
+  }
+
+  document.getElementById('buscar').onclick = ()=> loadProductos(document.getElementById('q').value.trim());
+  document.getElementById('q').oninput = e => loadProductos(e.target.value.trim());
+  const productTabs = document.getElementById('productTabs');
+  if (productTabs) {
+    productTabs.addEventListener('click', (e) => {
+      const btn = e.target.closest('.product-tab');
+      if (!btn) return;
+      ACTIVE_PRODUCT_TAB = btn.dataset.tab || 'medicamento';
+      productTabs.querySelectorAll('.product-tab').forEach((tab) => {
+        tab.classList.toggle('active', tab === btn);
+      });
+      renderProductos(LAST_PRODUCTS);
+    });
+  }
+  const barcodeInput = document.getElementById('barcodeInput');
+  const barcodeBtn = document.getElementById('barcodeAdd');
+  let barcodeBuffer = '';
+  let barcodeTimer = null;
+  const resetBarcodeBuffer = () => {
+    barcodeBuffer = '';
+    if (barcodeTimer) {
+      clearTimeout(barcodeTimer);
+      barcodeTimer = null;
+    }
+  };
+  const submitBarcode = async (code) => {
+    const cleaned = (code || '').trim();
+    if (!cleaned) return;
+    if (!barcodeInput) return;
+    barcodeInput.value = cleaned;
+    const evt = new KeyboardEvent('keydown', { key: 'Enter' });
+    barcodeInput.dispatchEvent(evt);
+  };
+  const shouldIgnoreKey = (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey) return true;
+    const tag = (e.target && e.target.tagName) ? e.target.tagName.toLowerCase() : '';
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return true;
+    return false;
+  };
+  document.addEventListener('keydown', (e) => {
+    if (shouldIgnoreKey(e)) return;
+    if (e.key === 'Enter') {
+      if (barcodeBuffer) {
+        e.preventDefault();
+        submitBarcode(barcodeBuffer);
+        resetBarcodeBuffer();
+      }
+      return;
+    }
+    if (e.key.length === 1) {
+      barcodeBuffer += e.key;
+      if (barcodeTimer) clearTimeout(barcodeTimer);
+      barcodeTimer = setTimeout(() => {
+        resetBarcodeBuffer();
+      }, 300);
+    }
+  });
+  if (barcodeInput) {
+    barcodeInput.addEventListener('keydown', async (e)=>{
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const code = barcodeInput.value.trim();
+        if (!code) return;
+        await scanBarcode(code);
+        barcodeInput.value = '';
+        barcodeInput.focus();
+      }
+    });
+  }
+  if (barcodeBtn) {
+    barcodeBtn.addEventListener('click', async ()=>{
+      if (!barcodeInput) return;
+      const code = barcodeInput.value.trim();
+      if (!code) return;
+      await scanBarcode(code);
+      barcodeInput.value = '';
+      barcodeInput.focus();
+    });
+  }
+
+  document.getElementById('productosList').addEventListener('click', (e)=>{
+    const btn = e.target.closest('button[data-id]');
+    if(!btn) return;
+    const id = btn.dataset.id;
+    (async ()=>{
+      try{
+        let source = LAST_PRODUCTS && LAST_PRODUCTS.length ? LAST_PRODUCTS : await fetchProductos();
+        const p = source.find(x => x.id == id);
+        if(p) addToCart(p);
+      }catch(err){ console.error(err); alert('Error agregando producto'); }
+    })();
+  });
+
+  document.getElementById('cartItems').addEventListener('click', (e)=>{
+    const idx = e.target.dataset.idx;
+    if(idx === undefined) return;
+    if(e.target.classList.contains('inc')){
+      const item = CART[idx];
+      const max = item.stock == null ? null : Number(item.stock || 0);
+      if (item.es_servicio || max == null || item.cantidad < max) {
+        CART[idx].cantidad = (CART[idx].cantidad || 0) + 1;
+        renderCart();
+      } else {
+        alert(item.tipo === 'combo' ? buildComboStockAlert(item) : 'No hay stock disponible para este producto');
+      }
+    } else if(e.target.classList.contains('dec')){
+      CART[idx].cantidad = Math.max(1, (CART[idx].cantidad || 1) - 1);
+      renderCart();
+    } else if(e.target.classList.contains('rm')){
+      if(confirm('Eliminar ítem?')){ CART.splice(idx,1); renderCart(); }
+    }
+  });
+
+  document.getElementById('cartCustomerType').addEventListener('change', (e)=>{
+    const v = e.target.value;
+    const dr = document.getElementById('docRow');
+    if(v === 'nit' || v === 'cui') dr.style.display = '';
+    else { dr.style.display = 'none'; document.getElementById('cartCustomerDocument').value = ''; }
+  });
+
+  document.getElementById('clearCart').onclick = clearCart;
+  const discountInput = document.getElementById('discountPercent');
+  if (discountInput) {
+    discountInput.addEventListener('input', () => renderCart());
+  }
+
+  const backToInv = document.getElementById('backToInv');
+  if (backToInv) backToInv.onclick = ()=> window.location = 'inventario.html';
+
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) {
+    logoutBtn.addEventListener('click', async ()=>{
+      try{ await fetch('api/logout', { credentials:'include' }); }catch(e){}
+      window.location = 'login.html';
+    });
+  }
+
+  document.getElementById('addServiceBtn').addEventListener('click', ()=>{
+    const amt = parseFloat(document.getElementById('serviceAmount').value||'0');
+    const note = (document.getElementById('serviceNote').value||'').trim();
+    if(!amt || amt<=0){ alert('Monto del servicio inválido'); return; }
+    if(!note){ alert('Debe ingresar la descripción del servicio'); return; }
+    const baseDesc = note || 'Servicio';
+    CART.push({ producto_id: 0, es_servicio:true, tipo:'servicio', nombre: baseDesc, cantidad: 1, precio_unit: amt, stock: null });
+    document.getElementById('serviceAmount').value = '';
+    document.getElementById('serviceNote').value = '';
+    renderCart();
+  });
+
+
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  if (checkoutBtn) {
+    checkoutBtn.addEventListener('click', async () => {
+      if (CHECKOUT_IN_PROGRESS) return;
+      CHECKOUT_IN_PROGRESS = true;
+      const prevLabel = checkoutBtn.textContent;
+      checkoutBtn.disabled = true;
+      checkoutBtn.textContent = 'Procesando...';
+      try {
+        if (CART.length === 0) {
+          alert('Carrito vacío');
+          return;
+        }
+
+        if (!CURRENT_BRANCH) {
+          alert('Seleccione una sucursal antes de cobrar');
+          return;
+        }
+
+        let receiptTab = null;
+        const abortCheckout = (message) => {
+          closeReceiptTab(receiptTab);
+          if (message) alert(message);
+          return;
+        };
+
+        const cliente_tipo = document.getElementById('cartCustomerType').value || 'consumidor_final';
+        const cliente_documento = (document.getElementById('cartCustomerDocument') || { value: '' }).value || null;
+
+        syncServicesFromCart();
+        const discountPercent = getDiscountPercentValue();
+        const total = getCartNetTotal();
+
+        if (total <= 0) {
+          return abortCheckout('Total inválido');
+        }
+
+        const paymentMethodSel = document.getElementById('paymentMethod');
+        let payMethod = paymentMethodSel ? paymentMethodSel.value : 'efectivo';
+        let cashAmount = 0;
+        let cardAmount = 0;
+        let efectivoRecibido = null;
+        let cambio = null;
+        let nombreComprobante = '';
+        let note = '';
+        const checkoutData = await collectCheckoutInput({
+          total,
+          payMethod,
+          askReceived: USER_ROLE === 'farmacia' || USER_ROLE === 'superadmin'
+        });
+        if (!checkoutData) return abortCheckout();
+        nombreComprobante = checkoutData.nombreComprobante || '';
+        note = checkoutData.note || '';
+        cashAmount = checkoutData.cashAmount || 0;
+        cardAmount = checkoutData.cardAmount || 0;
+        efectivoRecibido = checkoutData.efectivoRecibido;
+        cambio = checkoutData.cambio;
+        receiptTab = checkoutData.receiptTab || null;
+
+        const payload = {
+          items: CART.filter(i=>!i.es_servicio).map(i => ({
+            producto_id: i.producto_id,
+            cantidad: i.cantidad,
+            precio_unit: i.precio_unit,
+            lot_number: i.lot_number || null
+          })),
+          services: SERVICES.map(s=>({ monto: s.monto, descripcion: s.descripcion, producto_id: s.producto_id || null })),
+          total,
+          payment_method: payMethod,
+          branch_id: CURRENT_BRANCH,
+          cliente_tipo,
+          cliente_documento,
+          note,
+          venta_sin_producto: 0,
+          cantidad_cobro: null,
+          caja_id: CAJA_ABIERTA ? CAJA_ABIERTA.id : null,
+          efectivo_recibido: efectivoRecibido,
+          cambio: cambio,
+          discount_percent: discountPercent,
+          payment_split: payMethod === 'mixto' ? { efectivo: cashAmount, tarjeta: cardAmount } : null,
+          nombre_comprobante: nombreComprobante || null
+        };
+        let venta_id = null;
+        let data = null;
+try {
+  const resp = await fetch('api/register_sale', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify(payload)
+  });
+
+  try {
+
+    data = await resp.clone().json();
+  } catch (_) {
+    try {
+      const txt = await resp.text();
+      data = JSON.parse(txt);
+    } catch (e) {
+      data = null;
+    }
+  }
+
+  if (!resp.ok) {
+    if (receiptTab && !receiptTab.closed) {
+      try { receiptTab.close(); } catch (_) {}
+    }
+    const msg = (data && (data.error || data.message)) || 'Error procesando la venta';
+    alert(msg);
+    return;
+  }
+
+  if (data && (data.venta_id || data.id || data.sale_id)) {
+    venta_id = Number(data.venta_id || data.id || data.sale_id) || null;
+  }
+
+  if (!venta_id) {
+    if (receiptTab && !receiptTab.closed) {
+      try { receiptTab.close(); } catch (_) {}
+    }
+    console.warn('Respuesta sin venta_id. Respuesta:', data);
+    alert('La venta se registró, pero el servidor no devolvió el ID de la venta.');
+
+  }
+  const discountInputAfter = document.getElementById('discountPercent');
+  if (discountInputAfter) discountInputAfter.value = '0';
+  if (venta_id) {
+    const lang = (window.I18N && window.I18N.getLang) ? window.I18N.getLang() : (localStorage.getItem('app_lang') || 'es');
+    const url = `api/invoice_print?venta_id=${encodeURIComponent(venta_id)}&lang=${encodeURIComponent(lang)}`;
+    if (receiptTab && !receiptTab.closed) {
+      receiptTab.location.href = url;
+    } else {
+      const win = window.open(url, '_blank');
+      if (!win) {
+        alert('El navegador bloqueó la pestaña del comprobante.');
+      }
+    }
+  }
+  const expAlerts = Array.isArray(data?.expiring_alerts) ? data.expiring_alerts : [];
+  if (expAlerts.length) {
+    const msg = expAlerts
+      .map(a => {
+        const name = a.producto || a.product_name || `Producto ${a.product_id || ''}`.trim();
+        const lot = a.lot_number ? `Lote ${a.lot_number}` : 'Lote';
+        const exp = a.expiry_date ? `vence ${a.expiry_date}` : 'vence pronto';
+        const days = (a.days_left != null && !Number.isNaN(Number(a.days_left))) ? ` (${a.days_left} días)` : '';
+        return `- ${name} · ${lot} · ${exp}${days}`;
+      })
+      .join('\n');
+    alert(`Alertas de vencimiento:\n${msg}`);
+  }
+} catch (err) {
+  if (receiptTab && !receiptTab.closed) {
+    try { receiptTab.close(); } catch (_) {}
+  }
+  console.error('checkout error (cobro):', err);
+  alert('Error en servidor al cobrar');
+  return;
+}
+    try {
+      CART = [];
+      SERVICES.length = 0;
+      renderCart();
+      resetCheckoutSelectionDefaults();
+      if (typeof loadProductos === 'function') {
+        await loadProductos(document.getElementById('q')?.value.trim() || '', { silent: true }); 
+      }
+    const backendTotal = (data && data.total != null) ? Number(data.total) : total;
+    if (typeof showSuccess === 'function') {
+      showSuccess(venta_id, backendTotal);
+    } else {
+      alert(`Venta #${venta_id} registrada. Total Q${backendTotal.toFixed(2)}`);
+    }
+      } catch (err) {
+        console.warn('Post-venta con problemas (venta ya registrada):', err);
+      }
+      } finally {
+        CHECKOUT_IN_PROGRESS = false;
+        checkoutBtn.disabled = false;
+        checkoutBtn.textContent = prevLabel || 'Cobrar (Efectivo)';
+      }
+    });
+  }
+
+  document.getElementById('abrirCajaBtn').onclick = ()=> showModal('abrirCajaModal');
+document.getElementById('cancelAbrirCaja').onclick = ()=> hideModal('abrirCajaModal');
+
+document.getElementById('confirmAbrirCaja').onclick = async ()=>{
+  const monto = parseFloat(document.getElementById('montoInicial').value||0);
+  if(monto <= 0) return alert('Ingrese un monto válido');
+
+  const res = await abrirCaja(monto);
+
+  if(res.ok){
+    hideModal('abrirCajaModal');
+    document.getElementById('montoInicial').value = '';
+    alert('Caja abierta correctamente.');
+  }else{
+    alert(res.error || 'Error al abrir caja');  
+  }
+};
+
+
+document.getElementById('cerrarCajaBtn').onclick = async ()=>{
+  const tText = (key) => ((window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key);
+  if(!CAJA_ABIERTA) return alert(tText('No hay caja abierta'));
+  CASH_CLOSE_ADMIN_AUTH = null;
+  const authUser = document.getElementById('cashCloseAuthUser');
+  const authPassword = document.getElementById('cashCloseAuthPassword');
+  if (authUser) authUser.value = '';
+  if (authPassword) authPassword.value = '';
+  showModal('cashCloseAuthModal');
+};
+
+  document.getElementById('cancelCashCloseAuth').onclick = ()=>{
+    CASH_CLOSE_ADMIN_AUTH = null;
+    hideModal('cashCloseAuthModal');
+  };
+
+  document.getElementById('confirmCashCloseAuth').onclick = async ()=>{
+    const tText = (key) => ((window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key);
+    const authUser = document.getElementById('cashCloseAuthUser');
+    const authPassword = document.getElementById('cashCloseAuthPassword');
+    try {
+      await authorizeCashCloseAdmin(authUser?.value || '', authPassword?.value || '');
+      if (authUser) authUser.value = '';
+      if (authPassword) authPassword.value = '';
+      hideModal('cashCloseAuthModal');
+      await openCashCloseSummaryModal();
+    } catch (err) {
+      alert((err && err.message) ? err.message : tText('Error al validar administrador'));
+    }
+  };
+
+  document.getElementById('cancelCerrarCaja').onclick = ()=>{
+    CASH_CLOSE_ADMIN_AUTH = null;
+    hideModal('cerrarCajaModal');
+  };
+  document.getElementById('confirmCerrarCaja').onclick = async ()=>{
+    const montoFinal = parseMoney(document.getElementById('montoFinal').value);
+    const tText = (key) => ((window.I18N && typeof window.I18N.t === 'function') ? window.I18N.t(key) : key);
+    if(montoFinal == null) return alert(tText('Ingrese monto final válido'));
+    const res = await cerrarCaja(montoFinal);
+    if(res.ok){
+      hideModal('cerrarCajaModal');
+      alert(tText('Caja cerrada correctamente'));
+      if(res.cierre_id){
+        const mfParam = montoFinal != null ? `&monto_final=${encodeURIComponent(montoFinal)}` : '';
+        const lang = (window.I18N && window.I18N.getLang) ? window.I18N.getLang() : (localStorage.getItem('app_lang') || 'es');
+        const url = `api/cierre_pdf?cierre_id=${res.cierre_id}${mfParam}&lang=${encodeURIComponent(lang)}`;
+        const win = window.open(url, '_blank');
+        if (!win) {
+          window.location.href = url;
+        }
+      }
+    }else{
+      CASH_CLOSE_ADMIN_AUTH = null;
+      alert(res.error || tText('Error al cerrar caja'));
+    }
+  };
+
+  document.getElementById('closeModal').onclick = ()=> hideModal('successModal');
+  document.getElementById('openPDF').onclick = ()=>{
+    if(!LAST_VENTA_ID){ alert('No se generó id de venta para crear PDF'); return; }
+    const id = encodeURIComponent(LAST_VENTA_ID);
+    const lang = (window.I18N && window.I18N.getLang) ? window.I18N.getLang() : (localStorage.getItem('app_lang') || 'es');
+    window.open(`api/invoice_print?venta_id=${id}&id=${id}&sale_id=${id}&lang=${encodeURIComponent(lang)}`, '_blank');
+  };
+}
+
+function showSuccess(venta_id, total){
+  LAST_VENTA_ID = venta_id; 
+  document.getElementById('successMsg').innerText = `Venta ID: ${venta_id || '--'} · Total: Q${(total||0).toFixed(2)}`;
+  document.getElementById('successModal').style.display = 'flex';
+}
+
+async function init(){
+  await loadBranches();
+  await loadProductos();
+  renderCart();
+  renderBillingDoc(null);
+  setupHandlers();
+  await loadCurrentCaja();
+  startProductAutoRefresh();
+}
+
+authCheck();
+</script>
+  </div>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>

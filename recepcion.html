@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="css/style.css">  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Recepción - Consulta Externa</title>
+  <style>
+    :root{
+      --accent:#2b5876;
+      --bg:#f5f6fb;
+      --text:#1f2937;
+      --muted:#6b7280;
+    }
+    body{
+      margin:0;
+      font-family:'Segoe UI',sans-serif;
+      background:var(--bg);
+      color:var(--text);
+      display:flex;
+      min-height:100vh;
+    }
+    .sidebar{
+      width:220px;
+      background:#fff;
+      color:var(--accent);
+      display:flex;
+      flex-direction:column;
+      gap:6px;
+      padding:16px 12px;
+      border-right:1px solid #e5e7eb;
+    }
+    .sidebar h3{margin:0 0 10px 0;font-size:18px;color:var(--accent);}
+    .nav-link{
+      color:var(--accent);
+      text-decoration:none;
+      padding:10px 12px;
+      border-radius:8px;
+      display:block;
+      font-weight:600;
+    }
+    .nav-link:hover,.nav-link.active{background:#e9eef7;}
+    .content{flex:1;display:flex;flex-direction:column;}
+    header{
+      background:var(--accent);
+      color:#fff;
+      padding:12px 18px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    header h2{margin:0;font-size:18px;}
+    header button{
+      background:#fff;
+      color:var(--accent);
+      border:none;
+      padding:8px 12px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    .container{max-width:1200px;margin:18px auto;padding:0 16px;width:100%;}
+    .grid{display:grid;grid-template-columns:360px 1fr;gap:16px;align-items:start;}
+    .card{background:#fff;border-radius:10px;padding:14px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    label{font-weight:600;display:block;margin:6px 0 3px;}
+    input,select,textarea{width:100%;padding:8px;border:1px solid #d1d5db;border-radius:8px;box-sizing:border-box;}
+    textarea{resize:vertical;}
+    button{background:var(--accent);color:#fff;border:none;padding:8px 12px;border-radius:8px;cursor:pointer;font-weight:600;}
+    button.secondary{background:#9aa7b4;}
+    table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13px;}
+    th,td{border:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top;}
+    th{background:#f8fafc;}
+    .muted{color:var(--muted);font-size:13px;}
+    @media(max-width:1000px){
+      body{flex-direction:column;}
+      .sidebar{width:auto;flex-direction:row;flex-wrap:wrap;border-right:none;border-bottom:1px solid #e5e7eb;}
+      .grid{grid-template-columns:1fr;}
+    }
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <aside class="sidebar" aria-label="Navegación recepción">
+    <h3>Recepción</h3>
+    <a class="nav-link active" href="recepcion.html">Toma de datos</a>
+    <a class="nav-link" href="buscar_pacientes.html">Buscar paciente</a>
+    <a class="nav-link" href="historial_consultas.html">Historial</a>
+    <a class="nav-link" href="#" onclick="logout();return false;">Salir</a>
+  </aside>
+
+  <div class="content">
+    <header class="app-header">
+      <h2>Recepción - Consulta Externa</h2>
+      
+    </header>
+
+    <main class="container">
+      <div class="grid">
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <h3 style="margin:0;">Registrar paciente</h3>
+            <button type="button" class="secondary" onclick="location.href='buscar_pacientes.html'">Buscar paciente</button>
+          </div>
+          <input type="hidden" id="pacId">
+          <label>Nombre</label><input id="pacNombre">
+          <label>Sexo</label>
+          <select id="pacSexo"><option value="">--</option><option>Mujer</option><option>Hombre</option></select>
+          <label>Teléfono</label><input id="pacTel">
+          <label>Dirección</label><input id="pacDir">
+          <label>DPI (opcional)</label><input id="pacDpi">
+          <label>Motivo</label><textarea id="pacMotivo" rows="2"></textarea>
+          <label>Médico</label>
+          <select id="pacMedico">
+            <option value="">Seleccione...</option>
+            <option>Dr. Axel</option>
+            <option>Dr. Arias</option>
+            <option>Dr. Yorentine</option>
+          </select>
+          <div id="pacConsultorio" style="margin:6px 0;color:var(--accent);font-size:13px;"></div>
+          <div style="margin-top:10px;text-align:right;">
+            <button id="btnRegistrar">Registrar</button>
+          </div>
+          <div id="msg" style="margin-top:8px;color:var(--accent);font-size:13px;"></div>
+        </div>
+        <div class="card">
+          <h3 style="margin:0 0 10px 0;">Pacientes de hoy</h3>
+          <div id="lista" class="muted">Cargando...</div>
+        </div>
+      </div>
+    </main>
+  </div>
+<script>
+async function logout(){ try{await fetch('api/logout',{credentials:'include'});}catch(e){} location.href='login.html'; }
+async function auth(){
+  const r=await fetch('api/auth_check',{credentials:'include'});
+  const d=await r.json().catch(()=>({ok:false}));
+  const normalizeRole = (v)=>{
+    v = (v||'').toLowerCase();
+    v = v.normalize ? v.normalize('NFD').replace(/[\u0300-\u036f]/g,'') : v;
+    return v.replace(/\s+/g,'').replace(/_/g,'');
+  };
+  const role = normalizeRole(d.user.rol||'');
+  if(!d.ok || (role!=='recepcion' && role!=='superadmin')){ alert('Acceso restringido'); location.href='login.html'; }
+}
+async function cargar(){
+  if(shouldClearList()){
+    clearListView();
+    return;
+  }
+  const res = await fetch('api/consultas',{credentials:'include'});
+  const rows = await res.json().catch(()=>[]);
+  const box = document.getElementById('lista');
+  if(!rows.length){ box.innerText='Sin pacientes'; return; }
+  let html = '<table><thead><tr><th>ID</th><th>Paciente</th><th>Médico</th><th>Motivo</th><th>Estado</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    html += `<tr><td>${r.id}</td><td>${r.paciente||''}</td><td>${r.medico||''}</td><td>${r.motivo||''}</td><td>${r.estado||''}</td></tr>`;
+  });
+  html += '</tbody></table>';
+  box.innerHTML = html;
+}
+const RESET_KEY = 'recepcion_reset_date';
+function shouldClearList(){
+  const now = new Date();
+  const today = now.toISOString().slice(0,10);
+  const mark = localStorage.getItem(RESET_KEY);
+  if(now.getHours() < 17) return false;
+  if(mark === today) return false;
+  localStorage.setItem(RESET_KEY, today);
+  return true;
+}
+function clearListView(){
+  const box = document.getElementById('lista');
+  if(box) box.innerText = 'Lista vacía (reinicio diario a las 17:00).';
+}
+function startResetWatcher(){
+  setInterval(()=>{
+    if(shouldClearList()){
+      clearListView();
+    }
+  }, 60000);
+}
+function fillPatient(p){
+  if(!p) return;
+  document.getElementById('pacId').value = p.id || '';
+  document.getElementById('pacNombre').value = p.nombre || '';
+  document.getElementById('pacSexo').value = p.sexo || '';
+  document.getElementById('pacTel').value = p.telefono || '';
+  document.getElementById('pacDir').value = p.direccion || '';
+  document.getElementById('pacDpi').value = p.dpi || '';
+}
+async function prefillFromUrl(){
+  let pid = 0;
+  try{
+    const params = new URLSearchParams(window.location.search);
+    pid = parseInt(params.get('patient_id') || '0', 10);
+  }catch(e){}
+  if(!pid) return;
+  try{
+    const res = await fetch('api/patients_search?id='+encodeURIComponent(pid), { credentials:'include' });
+    const rows = await res.json().catch(()=>[]);
+    if(Array.isArray(rows) && rows[0]){
+      fillPatient(rows[0]);
+      const msg = document.getElementById('msg');
+      msg.innerText = `Paciente cargado: ${rows[0].nombre || ''}`;
+      msg.style.color = '#2b5876';
+    }
+  }catch(e){}
+}
+async function registrar(){
+  const patientId = parseInt(document.getElementById('pacId').value || '0', 10);
+  const payload = {
+    nombre: document.getElementById('pacNombre').value,
+    sexo: document.getElementById('pacSexo').value,
+    telefono: document.getElementById('pacTel').value,
+    direccion: document.getElementById('pacDir').value,
+    dpi: document.getElementById('pacDpi').value,
+    motivo: document.getElementById('pacMotivo').value,
+    medico: document.getElementById('pacMedico').value,
+    auto_ine: true
+  };
+  if(patientId > 0) payload.patient_id = patientId;
+  const res = await fetch('api/consultas',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  const d = await res.json().catch(()=>({ok:false}));
+  const msg = document.getElementById('msg');
+  if(!res.ok || !d.ok){ msg.innerText = d.error||'Error'; msg.style.color='#b91c1c'; return; }
+  msg.innerText = 'Paciente registrado y enviado a pre-consulta';
+  msg.style.color = '#2b5876';
+  document.querySelectorAll('#pacNombre,#pacSexo,#pacTel,#pacDir,#pacDpi,#pacMotivo,#pacMedico').forEach(el=>{el.value='';});
+  document.getElementById('pacId').value = '';
+  document.getElementById('pacConsultorio').innerText='';
+  try{
+    const url = new URL(window.location.href);
+    url.searchParams.delete('patient_id');
+    window.history.replaceState({}, '', url.pathname);
+  }catch(e){}
+  cargar();
+}
+(function(){
+  const medSel = document.getElementById('pacMedico');
+  const con = document.getElementById('pacConsultorio');
+  medSel.onchange = ()=>{
+    const v = medSel.value;
+    let c = '';
+    if(v==='Dr. Axel') c='Dirección Médica';
+    if(v==='Dr. Yorentine') c='Consultorio2';
+    if(v==='Dr. Arias') c='Consultorio3';
+    con.innerText = c ? `Se enviará a ${c}` : '';
+  };
+})();
+(async function(){
+  await auth();
+  document.getElementById('btnRegistrar').onclick = registrar;
+  startResetWatcher();
+  await prefillFromUrl();
+  await cargar();
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+

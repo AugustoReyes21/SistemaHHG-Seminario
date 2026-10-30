@@ -1,0 +1,192 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Historial de compras</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:12px 20px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background 0.3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:1000px;margin:20px auto;padding:0 20px;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;color:#333;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .subheading{margin:10px 0;color:#555;}
+    .btnConfirm{padding:4px 8px;border:none;border-radius:6px;background:#2b5876;color:#fff;cursor:pointer;transition:background 0.3s; font-size:12px;}
+    .btnConfirm:hover{background:#4e4376;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Historial de compras</h1>
+    <button onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+  </header>
+  <div class="container">
+    <p class="subheading" style="color:#fff;">Compras registradas.</p>
+    <div class="card" style="margin-bottom:14px;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end;">
+        <div>
+          <label data-i18n="Factura">Factura</label>
+          <input id="fFactura" type="text" placeholder="Ej: A-12345" data-i18n-placeholder="Ej: A-12345">
+        </div>
+        <div>
+          <label data-i18n="Proveedor">Proveedor</label>
+          <input id="fProveedor" type="text" placeholder="Nombre proveedor" data-i18n-placeholder="Nombre proveedor">
+        </div>
+        <div>
+          <label data-i18n="Producto">Producto</label>
+          <input id="fProducto" type="text" placeholder="Nombre producto" data-i18n-placeholder="Nombre producto">
+        </div>
+        <div>
+          <label data-i18n="Fecha">Fecha</label>
+          <input id="fFecha" type="date">
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btnConfirm" id="btnBuscar" type="button" data-i18n="Buscar">Buscar</button>
+          <button class="btnConfirm" id="btnLimpiar" type="button" data-i18n="Limpiar">Limpiar</button>
+        </div>
+      </div>
+    </div>
+    <table id="compras">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Fecha</th>
+          <th data-i18n="Factura">Factura</th>
+          <th>Proveedor</th>
+          <th>Tipo</th>
+          <th>Forma</th>
+          <th>Cuotas</th>
+          <th>Crédito</th>
+          <th>Total</th>
+          <th>Devoluciones</th>
+          <th>Estado</th>
+          <th>Acción</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script>
+    async function cargarCompras() {
+      try {
+        const params = new URLSearchParams();
+        const factura = (document.getElementById('fFactura')?.value || '').trim();
+        const proveedor = (document.getElementById('fProveedor')?.value || '').trim();
+        const producto = (document.getElementById('fProducto')?.value || '').trim();
+        const fecha = (document.getElementById('fFecha')?.value || '').trim();
+        if (factura) params.set('invoice_number', factura);
+        if (proveedor) params.set('supplier', proveedor);
+        if (producto) params.set('product', producto);
+        if (fecha) params.set('date', fecha);
+        const url = 'api/history_purchases' + (params.toString() ? `?${params.toString()}` : '');
+        const resp = await fetch(url, { credentials:'include' });
+        const data = await resp.json();
+        const tbody = document.querySelector('#compras tbody');
+        tbody.innerHTML = '';
+        data.forEach(row => {
+          const tr = document.createElement('tr');
+          const estado = (!row.status || row.status === 'pending') ? 'Pendiente' : 'Confirmada';
+          let accion = '';
+          if (!row.status || row.status === 'pending') {
+            accion = `<button class="btnConfirm" data-id="${row.id}">Confirmar</button>`;
+          } else {
+            accion = '';
+          }
+          tr.innerHTML = `
+            <td>${row.id}</td>
+            <td>${row.fecha}</td>
+            <td>${row.invoice_number || ''}</td>
+            <td>${row.proveedor || ''}</td>
+            <td>${row.tipo || ''}</td>
+            <td>${row.forma || ''}</td>
+            <td>${row.cuotas || ''}</td>
+            <td>${row.is_credit ? 'Sí' : 'No'}</td>
+            <td>${parseFloat(row.total).toFixed(2)}</td>
+            <td>${row.devoluciones_text || ''}</td>
+            <td>${estado}</td>
+            <td>${accion}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+        document.querySelectorAll('.btnConfirm').forEach(btn => {
+          btn.addEventListener('click', async (e) => {
+            const pid = e.currentTarget.getAttribute('data-id');
+            if (!pid) return;
+            if (!confirm('¿Confirmar esta compra?')) return;
+            try {
+              const res = await fetch('api/confirm_purchase', {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ purchase_id: parseInt(pid) })
+              });
+              const js = await res.json();
+              if (js.ok) {
+                let msg = 'Compra confirmada';
+                if (js.stock_adjusted != null) {
+                  msg += ` (stock +${js.stock_adjusted})`;
+                }
+                const extras = [];
+                if (js.lot_error) extras.push('lotes');
+                if (js.payment_error) extras.push('pagos');
+                if (js.journal_error) extras.push('contabilidad');
+                if (js.status_error) extras.push('estado');
+                if (extras.length) {
+                  msg += `; revisar ${extras.join(', ')}.`;
+                }
+                alert(msg);
+                cargarCompras();
+              } else {
+                alert(js.error || 'Error al confirmar');
+              }
+            } catch (err) {
+              alert('Error de red confirmando compra');
+            }
+          });
+        });
+      } catch (err) {
+        console.error('Error cargando historial de compras', err);
+      }
+    }
+    document.addEventListener('DOMContentLoaded', () => {
+      cargarCompras();
+      document.getElementById('btnBuscar')?.addEventListener('click', cargarCompras);
+      document.getElementById('btnLimpiar')?.addEventListener('click', () => {
+        document.getElementById('fFactura').value = '';
+        document.getElementById('fProveedor').value = '';
+        document.getElementById('fProducto').value = '';
+        document.getElementById('fFecha').value = '';
+        cargarCompras();
+      });
+    });
+  </script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+

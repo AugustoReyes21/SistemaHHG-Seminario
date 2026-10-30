@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="css/style.css">
+  <title>Kardex</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#333;}
+    header{display:flex;justify-content:space-between;align-items:center;padding:14px 22px;background:linear-gradient(90deg,#2b5876,#4e4376);color:#fff;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;transition:background 0.3s;}
+    header button:hover{background:#e5e5e5;}
+    .container{max-width:none;margin:20px 20px;padding:0 10px;}
+    .filters{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px;}
+    .filters label{display:block;font-size:12px;color:#fff;margin-bottom:4px;text-shadow:0 1px 2px rgba(0,0,0,0.45);}
+    .filters input,.filters select{padding:8px;border-radius:6px;border:1px solid #ccc;}
+    .filters .field{min-width:160px;}
+    .filters button{background:#2b5876;color:#fff;border:none;padding:8px 12px;border-radius:6px;cursor:pointer;}
+    .filters button:hover{background:#4e4376;}
+    table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+    th,td{padding:10px;border-bottom:1px solid #eee;text-align:left;}
+    th{background:#f0f4f8;color:#333;font-weight:600;}
+    tr:last-child td{border-bottom:none;}
+    .muted{color:#666;font-size:12px;}
+    .muted-on-bg{color:#fff;font-size:12px;text-shadow:0 1px 2px rgba(0,0,0,0.45);}
+    .qty.neg{color:#b91c1c;font-weight:600;}
+    .qty.pos{color:#065f46;font-weight:600;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1>Kardex de Inventario</h1>
+    <div>
+      <button onclick="window.location.href='inventario.html'" class="back-btn">Volver</button>
+    </div>
+  </header>
+  <div class="container">
+    <div class="filters">
+      <div class="field">
+        <label>Producto</label>
+        <input id="productInput" list="productList" placeholder="ID o nombre...">
+        <datalist id="productList"></datalist>
+      </div>
+      <div class="field">
+        <label>Tipo</label>
+        <select id="typeFilter">
+          <option value="">Todos</option>
+          <option value="compra">Compra</option>
+          <option value="devolucion">Devolución</option>
+          <option value="ajuste">Ajuste</option>
+          <option value="venta">Venta</option>
+          <option value="traslado">Traslado</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Desde</label>
+        <input id="dateFrom" type="date">
+      </div>
+      <div class="field">
+        <label>Hasta</label>
+        <input id="dateTo" type="date">
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <button id="btnBuscar">Buscar</button>
+      </div>
+      <div class="field">
+        <label>&nbsp;</label>
+        <span class="muted-on-bg" id="resultHint">Sin resultados.</span>
+      </div>
+    </div>
+
+    <table id="kardexTable">
+      <thead>
+        <tr>
+          <th>Fecha</th>
+          <th>Producto</th>
+          <th>Servicio</th>
+          <th>Tipo</th>
+          <th>Cantidad</th>
+          <th>Referencia</th>
+          <th>Notas</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+<script>
+let PRODUCTS = [];
+
+function parseProductId(raw){
+  const text = String(raw || '').trim();
+  if (!text) return null;
+  const m = text.match(/^\\s*(\\d+)/);
+  if (m) return Number(m[1]);
+  const found = PRODUCTS.find(p => String(p.nombre_comercial || '').toLowerCase() === text.toLowerCase());
+  return found ? Number(found.id) : null;
+}
+
+function formatQty(value){
+  const n = Number(value || 0);
+  if (!Number.isFinite(n)) return '0';
+  return n % 1 === 0 ? String(n) : n.toFixed(2);
+}
+
+function renderRows(rows){
+  const tbody = document.querySelector('#kardexTable tbody');
+  tbody.innerHTML = '';
+  if (!rows.length){
+    tbody.innerHTML = '<tr><td colspan="7" class="muted">Sin movimientos.</td></tr>';
+    return;
+  }
+  rows.forEach(r => {
+    const qty = Number(r.cantidad || 0);
+    const qtyClass = qty < 0 ? 'neg' : 'pos';
+    const productName = r.nombre_comercial || (r.producto_id ? ('Producto #' + r.producto_id) : '');
+    let serviceName = '';
+    if (!r.producto_id && r.notas) {
+      const noteText = String(r.notas);
+      const parts = noteText.split('|');
+      if (parts.length) {
+        serviceName = parts[0].replace(/^Venta\\s+sin\\s+producto:\\s*/i, '').trim();
+      }
+    }
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${r.fecha || ''}</td>
+      <td>${productName}</td>
+      <td>${serviceName}</td>
+      <td>${r.tipo || ''}</td>
+      <td class="qty ${qtyClass}">${formatQty(qty)}</td>
+      <td>${r.referencia || ''}</td>
+      <td>${r.notas || ''}</td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+async function loadProducts(){
+  try{
+    const res = await fetch('api/productos', { credentials:'include', cache:'no-store' });
+    const data = await res.json();
+    PRODUCTS = Array.isArray(data) ? data : (data && data.items ? data.items : []);
+    const dl = document.getElementById('productList');
+    if (!dl) return;
+    dl.innerHTML = '';
+    PRODUCTS.forEach(p => {
+      const opt = document.createElement('option');
+      opt.value = `${p.id} - ${p.nombre_comercial}`;
+      dl.appendChild(opt);
+    });
+  }catch(e){
+    console.warn('No se pudieron cargar productos', e);
+  }
+}
+
+async function buscar(){
+  const params = new URLSearchParams();
+  const pid = parseProductId(document.getElementById('productInput').value);
+  const type = document.getElementById('typeFilter').value;
+  const from = document.getElementById('dateFrom').value;
+  const to = document.getElementById('dateTo').value;
+  if (pid) params.set('product_id', pid);
+  if (type) params.set('type', type);
+  if (from) params.set('from', from);
+  if (to) params.set('to', to);
+  params.set('limit', '500');
+  const res = await fetch(`api/inventory_movements?${params.toString()}`, { credentials:'include' });
+  const data = await res.json();
+  if (!res.ok || !data.ok) {
+    alert((data && data.error) || 'Error cargando kardex');
+    return;
+  }
+  const rows = data.rows || [];
+  renderRows(rows);
+  document.getElementById('resultHint').textContent = `Resultados: ${rows.length}`;
+}
+
+document.getElementById('btnBuscar').addEventListener('click', buscar);
+
+(async function init(){
+  try{
+    const auth = await fetch('api/auth_check', { credentials:'include' });
+    const data = await auth.json();
+    if (!data.ok) return window.location = 'login.html';
+  }catch(_){
+    return window.location = 'login.html';
+  }
+  await loadProducts();
+  await buscar();
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>

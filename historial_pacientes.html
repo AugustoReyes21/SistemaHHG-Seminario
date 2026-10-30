@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">  <link rel="stylesheet" href="css/style.css">  <title>Historial de Pacientes</title>
+  <style>
+    body{margin:0;font-family:'Segoe UI',sans-serif;background:#f5f7fb;color:#233;}
+    header{background:#2b5876;color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;}
+    header h1{margin:0;font-size:22px;}
+    header button{background:#fff;color:#2b5876;border:none;padding:8px 14px;border-radius:6px;cursor:pointer;}
+    .container{padding:20px;max-width:1200px;margin:0 auto;}
+    .card{background:#fff;border-radius:10px;padding:16px;box-shadow:0 6px 16px rgba(0,0,0,0.08);margin-bottom:20px;}
+    input{width:100%;padding:8px;border:1px solid #ccd;border-radius:6px;font-size:15px;}
+    label{font-weight:600;font-size:14px;margin-bottom:4px;display:block;}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px;}
+    button.primary{background:#2b5876;color:#fff;border:none;padding:10px 16px;border-radius:6px;cursor:pointer;}
+    table{width:100%;border-collapse:collapse;font-size:14px;margin-top:12px;}
+    th,td{border-bottom:1px solid #eee;padding:8px;text-align:left;}
+    th{background:#f0f4f8;color:#333;}
+    .muted{color:#677;}
+    .badge{display:inline-block;padding:2px 6px;border-radius:12px;font-size:12px;background:#eef;color:#2b5876;}
+    .doc-links{display:flex;flex-wrap:wrap;gap:8px;}
+    .doc-link{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;background:#e8f1f8;color:#2b5876;text-decoration:none;font-size:12px;font-weight:600;}
+    .doc-link:hover{background:#d8e8f4;}
+    .modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);justify-content:center;align-items:center;z-index:9999;}
+    .modal .box{background:#fff;border-radius:10px;padding:18px;max-width:420px;width:90%;box-shadow:0 12px 30px rgba(0,0,0,0.25);}
+    .details{font-size:14px;}
+    .details div{margin-bottom:6px;}
+  </style>
+</head>
+<body class="app app-bg-photo hide-legacy-actions">
+  <header class="app-header">
+    <h1 id="pageTitle">Historial de Pacientes</h1>
+    <div>
+      
+    </div>
+  </header>
+  <div class="container">
+    <div class="card">
+      <h3 id="searchTitle">Buscar por fecha</h3>
+      <form id="searchForm">
+        <div class="grid">
+          <div>
+            <label>Desde</label>
+            <input type="date" name="from">
+          </div>
+          <div>
+            <label>Hasta</label>
+            <input type="date" name="to">
+          </div>
+        </div>
+        <div style="margin-top:12px;display:flex;gap:10px;flex-wrap:wrap;">
+          <button type="submit" class="primary">Buscar</button>
+          <button type="button" id="clearBtn" class="primary" style="background:#9aa7b4;">Limpiar</button>
+        </div>
+      </form>
+    </div>
+    <div class="card">
+      <h3>Resultados</h3>
+      <div class="muted" id="resultsHint">Complete un filtro y presione buscar.</div>
+      <div class="table-wrapper">
+        <table id="historyTable" aria-live="polite">
+          <thead>
+            <tr>
+              <th>Fecha</th>
+              <th>Paciente</th>
+              <th>DPI</th>
+              <th>Teléfono</th>
+              <th>Adm.</th>
+              <th>Total</th>
+              <th>Descuento</th>
+              <th>Pagado</th>
+              <th>Comprobantes</th>
+              <th>Datos</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="patientModal" aria-hidden="true">
+    <div class="box">
+      <h3>Datos del paciente</h3>
+      <div id="patientDetails" class="details"></div>
+      <div style="text-align:right;margin-top:12px;">
+        <button class="primary" id="closeModalBtn">Cerrar</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+const API = 'api/hospital';
+const AREA_LABELS = {
+  emergencia: 'Emergencia',
+  hospitalizacion: 'Hospitalización'
+};
+let CURRENT_AREA = 'emergencia';
+let CURRENT_ROLE = 'user';
+
+async function logout(){
+  try{ await fetch('api/logout',{credentials:'include'});}catch(e){}
+  window.location='login.html';
+}
+
+function money(v){ return 'Q' + Number(v||0).toFixed(2); }
+function normalizeRole(value){
+  const raw = String(value || '').trim().toLowerCase();
+  if (!raw) return 'user';
+  if (raw.includes('administr')) return 'admin';
+  if (raw.includes('super')) return 'superadmin';
+  if (raw.includes('hospital')) return 'cashierh';
+  if (raw.includes('emerg')) return 'cashiee';
+  if (raw.includes('medic')) return 'medico';
+  if (raw.includes('enfer')) return 'enfermeria';
+  return raw;
+}
+function resolveArea(role){
+  const qs = new URLSearchParams(location.search || '');
+  const areaParam = String(qs.get('area') || '').trim().toLowerCase();
+  if (areaParam === 'emergencia' || areaParam === 'hospitalizacion') return areaParam;
+  if (role === 'cashiee') return 'emergencia';
+  if (role === 'cashierh') return 'hospitalizacion';
+  if (role === 'enfermeria') {
+    try {
+      const stored = localStorage.getItem('hhg_nurse_area') || '';
+      if (stored === 'emergencia' || stored === 'hospitalizacion') return stored;
+    } catch (_) {}
+  }
+  if (role === 'medico') {
+    try {
+      const stored = localStorage.getItem('hhg_medico_area') || '';
+      if (stored === 'emergencia' || stored === 'hospitalizacion') return stored;
+    } catch (_) {}
+  }
+  if (role === 'superadmin') {
+    try {
+      const stored = localStorage.getItem('hhg_super_area') || localStorage.getItem('hhg_nurse_area') || '';
+      if (stored === 'emergencia' || stored === 'hospitalizacion') return stored;
+    } catch (_) {}
+  }
+  return 'emergencia';
+}
+function formatDateTime(value){
+  if(!value) return '';
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString();
+}
+function updateLabels(){
+  const areaLabel = AREA_LABELS[CURRENT_AREA] || 'Pacientes';
+  const title = `Historial de Pacientes - ${areaLabel}`;
+  const pageTitle = document.getElementById('pageTitle');
+  const searchTitle = document.getElementById('searchTitle');
+  const hint = document.getElementById('resultsHint');
+  if(pageTitle) pageTitle.textContent = title;
+  if(searchTitle) searchTitle.textContent = `Buscar ${areaLabel} por fecha`;
+  if(hint && !document.querySelector('#historyTable tbody').children.length){
+    hint.textContent = `Selecciona una fecha o rango para consultar ${areaLabel}.`;
+  }
+}
+function renderDocumentsHtml(docs){
+  if(!Array.isArray(docs) || !docs.length){
+    return '<div class="muted">Sin comprobantes asociados.</div>';
+  }
+  return docs.map((doc)=>{
+    const total = doc.total != null ? ` · ${money(doc.total)}` : '';
+    const label = `${doc.label || 'Comprobante'}${total}`;
+    return `<a class="doc-link" href="${doc.href}" target="_blank" rel="noopener">${label}</a>`;
+  }).join('');
+}
+
+async function ensureAccess(){
+  const res = await fetch('api/auth_check',{credentials:'include'});
+  const data = await res.json();
+  if(!res.ok || !data.ok){
+    window.location = 'login.html';
+    return false;
+  }
+  const role = normalizeRole(data.user?.rol || data.user?.role || '');
+  const allowed = ['admin','cashierh','cashiee','enfermeria','medico','superadmin'];
+  if(!allowed.includes(role)){
+    alert('No tiene permiso para ver el historial.');
+    window.location = 'inventario.html';
+    return false;
+  }
+  CURRENT_ROLE = role;
+  CURRENT_AREA = resolveArea(role);
+  updateLabels();
+  return true;
+}
+
+async function fetchHistory(params = {}){
+  const query = new URLSearchParams({ action:'history_search', tipo: CURRENT_AREA, ...params });
+  const res = await fetch(`${API}?${query.toString()}`, { credentials:'include' });
+  const data = await res.json();
+  if(!res.ok || !data.ok) throw new Error(data.error||'Error consultando historial');
+  return data.history || [];
+}
+
+function renderHistory(rows){
+  const tbody = document.querySelector('#historyTable tbody');
+  const hint = document.getElementById('resultsHint');
+  tbody.innerHTML = '';
+  if(!rows.length){
+    hint.textContent = `Sin resultados para ${AREA_LABELS[CURRENT_AREA] || 'el área seleccionada'} con ese rango de fechas.`;
+    return;
+  }
+  hint.textContent = `Resultados: ${rows.length}`;
+  rows.forEach(r=>{
+    const hasAdmission = Number(r.admission_id || 0) > 0;
+    const isClientOnly = String(r.history_kind || '') === 'client_only' || !hasAdmission;
+    const admissionHtml = hasAdmission
+      ? `<span class="badge">#${r.admission_id}</span>`
+      : '<span class="muted">Sin admisión</span>';
+    const totalHtml = isClientOnly ? '<span class="muted">—</span>' : money(r.total_cargos);
+    const discountHtml = isClientOnly ? '<span class="muted">—</span>' : money(r.discount_amount);
+    const paidHtml = isClientOnly ? '<span class="muted">—</span>' : money(r.total_pagado);
+    const tr = document.createElement('tr');
+    const fecha = formatDateTime(r.created_at);
+    tr.innerHTML = `
+      <td>${fecha}</td>
+      <td>${r.nombre || ''}</td>
+      <td>${r.documento || ''}</td>
+      <td>${r.telefono || ''}</td>
+      <td>${admissionHtml}</td>
+      <td>${totalHtml}</td>
+      <td>${discountHtml}</td>
+      <td>${paidHtml}</td>
+      <td class="documents-cell"></td>
+      <td><button class="primary" type="button">Ver datos</button></td>
+    `;
+    const docsCell = tr.querySelector('.documents-cell');
+    if (docsCell) {
+      if (Array.isArray(r.documents) && r.documents.length) {
+        const wrap = document.createElement('div');
+        wrap.className = 'doc-links';
+        r.documents.forEach((doc) => {
+          const a = document.createElement('a');
+          a.className = 'doc-link';
+          a.href = doc.href || '#';
+          a.target = '_blank';
+          a.rel = 'noopener';
+          a.textContent = doc.total != null ? `${doc.label || 'Comprobante'} · ${money(doc.total)}` : (doc.label || 'Comprobante');
+          wrap.appendChild(a);
+        });
+        docsCell.appendChild(wrap);
+      } else {
+        docsCell.innerHTML = '<span class="muted">Sin comprobantes</span>';
+      }
+    }
+    const btn = tr.querySelector('button');
+    btn.addEventListener('click', ()=>showPatientDetails(r));
+    tbody.appendChild(tr);
+  });
+}
+
+function showPatientDetails(data){
+  const modal = document.getElementById('patientModal');
+  const details = document.getElementById('patientDetails');
+  if (!modal || !details) return;
+  const rows = [
+    ['Nombre', data.nombre || ''],
+    ['DPI', data.documento || ''],
+    ['Teléfono', data.telefono || ''],
+    ['Dirección', data.direccion || ''],
+    ['Fecha de nacimiento', data.fecha_nacimiento || ''],
+    ['Área', AREA_LABELS[(data.tipo || CURRENT_AREA)] || ''],
+    ['Estado', String(data.history_kind || '') === 'client_only' || !data.admission_id ? 'Guardado sin admisión' : 'Con admisión'],
+    ['Admisión', data.admission_id ? `#${data.admission_id}` : 'Sin admisión'],
+    ['Fecha de registro', formatDateTime(data.created_at) || ''],
+    ['Es menor', data.es_menor ? 'Sí' : 'No'],
+    ['Encargado', data.encargado_nombre || ''],
+    ['DPI encargado', data.encargado_dpi || '']
+  ];
+  details.innerHTML =
+    rows.map(([label, val]) => `<div><strong>${label}:</strong> ${val || '—'}</div>`).join('') +
+    `<div style="margin-top:14px;"><strong>Comprobantes:</strong><div class="doc-links" style="margin-top:8px;">${renderDocumentsHtml(data.documents || [])}</div></div>`;
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden','false');
+}
+
+document.getElementById('closeModalBtn').addEventListener('click', ()=>{
+  const modal = document.getElementById('patientModal');
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden','true');
+});
+
+document.getElementById('searchForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const params = Object.fromEntries(new FormData(e.target).entries());
+  const from = (params.from || '').trim();
+  const to = (params.to || '').trim();
+  if(!from && !to){
+    alert('Selecciona una fecha o rango para buscar.');
+    return;
+  }
+  try{
+    const rows = await fetchHistory({ from, to });
+    renderHistory(rows);
+  }catch(err){
+    alert(err.message || 'Error al consultar historial');
+  }
+});
+
+document.getElementById('clearBtn').addEventListener('click', ()=>{
+  const form = document.getElementById('searchForm');
+  form.reset();
+  document.querySelector('#historyTable tbody').innerHTML = '';
+  document.getElementById('resultsHint').textContent = `Selecciona una fecha o rango para consultar ${AREA_LABELS[CURRENT_AREA] || 'el historial'}.`;
+});
+
+(async function init(){
+  if(await ensureAccess()){
+    document.getElementById('resultsHint').textContent = `Selecciona una fecha o rango para consultar ${AREA_LABELS[CURRENT_AREA] || 'el historial'}.`;
+  }
+})();
+</script>
+<script src="js/profile.js"></script>
+<div id="profileModal" class="modal" style="display:none;">
+  <div class="box" style="max-width:420px;">
+    <h3 style="margin-top:0;">Perfil</h3>
+    <div style="display:flex;gap:14px;align-items:center;">
+      <img data-profile-photo src="" alt="Foto" style="width:64px;height:64px;border-radius:16px;object-fit:cover;background:#e2e8f0;">
+      <div>
+        <div style="font-weight:700;" data-profile-name></div>
+        <div class="muted" data-profile-username></div>
+        <div class="muted">Rol: <span data-profile-role></span></div>
+      </div>
+    </div>
+    <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px;">
+      <button type="button" class="secondary" onclick="document.getElementById('profileModal').style.display='none'">Cerrar</button>
+    </div>
+  </div>
+</div>
+<script src="js/sidebar.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
