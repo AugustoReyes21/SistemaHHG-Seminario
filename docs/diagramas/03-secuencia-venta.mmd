@@ -1,0 +1,39 @@
+sequenceDiagram
+  autonumber
+  actor C as Cajero
+  participant UI as ventas.html
+  participant V as validate.js (zod)
+  participant I as idempotency.js (NUEVO)
+  participant R as sales.js /register_sale
+  participant DB as PostgreSQL
+
+  C->>UI: Cobrar carrito
+  UI->>UI: prepareSaleAttempt() -> llave K + cuerpo
+  UI->>V: POST /api/register_sale (Idempotency-Key: K)
+  V->>I: cuerpo válido
+  I->>DB: INSERT idempotency_keys (K, hash, processing) ON CONFLICT DO NOTHING
+  alt Llave nueva (fila insertada)
+    I->>R: next()
+    R->>DB: BEGIN
+    R->>DB: SELECT lots ... ORDER BY expiry_date FOR UPDATE (FEFO + bloqueo)
+    R->>DB: INSERT ventas, venta_items, lot_sales, payments, kardex
+    R->>DB: UPDATE idempotency_keys SET committed, resource_id = venta (misma transacción)
+    R->>DB: COMMIT
+    R-->>I: 200 {venta_id}
+    I->>DB: UPDATE completed + response_body
+    I-->>UI: 200 {venta_id}
+    Note over UI,DB: Si la respuesta se pierde aquí (corte de red),<br/>el cajero presiona Cobrar otra vez con la misma llave K
+  else Misma llave y mismo cuerpo, ya completada
+    I->>DB: SELECT respuesta guardada
+    I-->>UI: 200 {venta_id} + Idempotent-Replayed: true
+  else Misma llave aún en proceso
+    I-->>UI: 409 IDEMPOTENCY_IN_PROGRESS + Retry-After
+  else Misma llave con otro cuerpo
+    I-->>UI: 422 IDEMPOTENCY_KEY_REUSED
+  end
+  opt Error de negocio (stock insuficiente, lote vencido)
+    R->>DB: ROLLBACK (venta y llave committed se revierten)
+    R-->>I: 409 INSUFFICIENT_STOCK
+    I->>DB: DELETE llave en processing (se puede reintentar)
+  end
+  UI-->>C: Comprobante o mensaje claro

@@ -1,0 +1,23 @@
+
+Antes: 4 ventas, stock de Amoxicilina 500mg (DEMO) = 58
+
+1) Misma venta enviada 3 veces con Idempotency-Key 3bdf02b5...
+  intento 1                                    HTTP 200  venta #5
+  intento 2                                    HTTP 200 (repetida)  venta #5
+  intento 3                                    HTTP 200 (repetida)  venta #5
+
+2) Cinco envíos simultáneos con una llave nueva (doble clic extremo)
+  envío 1                                      HTTP 200  venta #6
+  envío 2                                      HTTP 409  IDEMPOTENCY_IN_PROGRESS
+  envío 3                                      HTTP 409  IDEMPOTENCY_IN_PROGRESS
+  envío 4                                      HTTP 409  IDEMPOTENCY_IN_PROGRESS
+  envío 5                                      HTTP 409  IDEMPOTENCY_IN_PROGRESS
+
+3) Reglas del contrato
+  misma llave, otra cantidad                   HTTP 422  IDEMPOTENCY_KEY_REUSED
+  llave con formato inválido                   HTTP 400  IDEMPOTENCY_KEY_INVALID
+  stock insuficiente (9999 u.)                 HTTP 409  INSUFFICIENT_STOCK
+
+Después: 6 ventas (+2), stock = 55 (-3)
+Esperado: +2 ventas y -3 unidades (una venta de 2 y una de 1), sin duplicados.
+

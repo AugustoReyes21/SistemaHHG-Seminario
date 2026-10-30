@@ -1,0 +1,9 @@
+Antes:            ventas=3  stock=59
+Cobro, intento 1:
+  register_sale #1: HTTP 200, llave 5a51d4d8-841f-4f39-a8f5-1a8056a36185
+  -> se corta la conexión antes de que el navegador reciba la respuesta
+  [alerta] No se pudo confirmar el cobro por un problema de conexión. Presione Cobrar de nuevo: el sistema no duplicará la venta.
+Tras intento 1:   ventas=4  stock=58
+Cobro, intento 2 (el cajero vuelve a presionar Cobrar):
+  register_sale #2: HTTP 200 (repetida), llave 5a51d4d8-841f-4f39-a8f5-1a8056a36185
+Tras intento 2:   ventas=4  stock=58

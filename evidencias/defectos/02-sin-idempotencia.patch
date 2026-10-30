@@ -1,0 +1,12 @@
+diff --git a/server/routes/sales.js b/server/routes/sales.js
+index b99c163..ab5447e 100644
+--- a/server/routes/sales.js
++++ b/server/routes/sales.js
+@@ -3248,7 +3248,6 @@ router.post(
+ router.post(
+   '/register_sale',
+   validateBody(validationSchemas.saleRegisterSchema),
+-  idempotency({ scope: 'POST /api/register_sale' }),
+   asyncHandler(async (req, res) => {
+     if (!req.session?.user) return safeJson(res, { ok: false, error: 'No autenticado' }, 401);
+     const roleRaw = req.session.user.rol || req.session.user.role || 'user';

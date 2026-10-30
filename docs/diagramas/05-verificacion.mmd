@@ -1,0 +1,13 @@
+flowchart LR
+  classDef nuevo fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d
+  DEV["Desarrollador<br/>git push / pull request"] --> GHA["GitHub Actions<br/>ubuntu-latest · Node 22"]:::nuevo
+  GHA --> SVC[("Servicio postgres:16<br/>hhg_test :5433")]:::nuevo
+  GHA --> CI["npm ci"] --> RUN["npm run test:report"]:::nuevo
+  RUN --> U["tests/unit<br/>6 casos sin BD"]:::nuevo
+  RUN --> IT["tests/integration<br/>23 casos con BD real"]:::nuevo
+  IT -->|"DROP SCHEMA + pos_retail.sql<br/>+ migraciones + arranque"| SVC
+  IT -->|supertest| APP["createApp()<br/>Express real"]
+  APP --> SVC
+  RUN --> J["Artefacto junit.xml"]:::nuevo
+  LOCAL["Equipo local<br/>docker compose up db-test"] --> SVC2[("PostgreSQL :5433<br/>tmpfs")]
+  LOCAL --> RUN2["npm test"] --> SVC2

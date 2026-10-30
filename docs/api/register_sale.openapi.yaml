@@ -1,0 +1,182 @@
+openapi: 3.0.3
+info:
+  title: SistemaHHG - Registro de ventas
+  version: 1.1.0
+  description: |
+    Contrato de `POST /api/register_sale` (módulo Ventas / Caja).
+    Versión 1.1.0 (Seminario de TI): agrega el encabezado `Idempotency-Key`
+    y respuestas 409/422 con código de error estable.
+
+    Reglas de idempotencia:
+    - La llave es única por usuario y operación; vive 24 horas.
+    - Mismo cuerpo + misma llave -> se devuelve la respuesta original con
+      `Idempotent-Replayed: true` y la venta NO se vuelve a crear.
+    - Cuerpo distinto + misma llave -> 422 `IDEMPOTENCY_KEY_REUSED`.
+    - Primera solicitud aún en proceso -> 409 `IDEMPOTENCY_IN_PROGRESS` + `Retry-After`.
+    - Si la venta es rechazada (4xx/5xx) la llave se libera y puede reintentarse.
+    - Sin encabezado la operación funciona como antes (compatibilidad).
+servers:
+  - url: http://localhost:3000
+paths:
+  /api/register_sale:
+    post:
+      summary: Registra una venta de farmacia descontando lotes por FEFO
+      operationId: registerSale
+      security:
+        - cookieAuth: []
+      parameters:
+        - in: header
+          name: Idempotency-Key
+          required: false
+          description: Identificador único del intento de cobro (UUID recomendado).
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{8,100}$'
+          example: 3f2b8c1e-9a4d-4e7b-8f00-1c2d3e4f5a6b
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaleRequest'
+      responses:
+        '200':
+          description: Venta registrada (o respuesta repetida de un intento anterior).
+          headers:
+            Idempotent-Replayed:
+              description: Presente con valor `true` cuando la respuesta proviene de un intento anterior.
+              schema:
+                type: string
+                enum: ['true']
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SaleResponse'
+        '400':
+          description: Datos inválidos (sin sucursal, sin caja abierta, sin comprobante, llave mal formada).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                llaveInvalida:
+                  value: { ok: false, code: IDEMPOTENCY_KEY_INVALID, error: 'Idempotency-Key inválida: use de 8 a 100 caracteres [A-Za-z0-9_-]' }
+                cajaCerrada:
+                  value: { ok: false, error: 'La caja seleccionada ya está cerrada.' }
+        '401':
+          description: Sin sesión.
+        '403':
+          description: El rol no puede vender.
+        '409':
+          description: Conflicto con el estado actual (stock/lotes) o venta en proceso.
+          headers:
+            Retry-After:
+              description: Segundos sugeridos antes de reintentar (solo IDEMPOTENCY_IN_PROGRESS).
+              schema:
+                type: integer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                enProceso:
+                  value: { ok: false, code: IDEMPOTENCY_IN_PROGRESS, error: 'Esta venta ya se está procesando; espere un momento' }
+                sinStock:
+                  value: { ok: false, code: INSUFFICIENT_STOCK, error: 'Stock insuficiente por lote para Insulina NPH' }
+        '422':
+          description: La solicitud es entendible pero viola una regla de negocio.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                llaveReutilizada:
+                  value: { ok: false, code: IDEMPOTENCY_KEY_REUSED, error: 'Esta Idempotency-Key ya se usó con datos diferentes' }
+                efectivo:
+                  value: { ok: false, code: CASH_INSUFFICIENT, error: 'El monto recibido es menor al total' }
+components:
+  securitySchemes:
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: hhg_auth
+  schemas:
+    SaleItem:
+      type: object
+      required: [producto_id, cantidad]
+      properties:
+        producto_id: { type: integer, minimum: 1 }
+        cantidad: { type: number, exclusiveMinimum: true, minimum: 0 }
+        precio_unit: { type: number, description: 'Informativo; el precio real sale del lote.' }
+        lot_number: { type: string, nullable: true, description: 'Lote específico; si es null se aplica FEFO.' }
+    SaleRequest:
+      type: object
+      required: [branch_id, caja_id, nombre_comprobante]
+      properties:
+        items:
+          type: array
+          items: { $ref: '#/components/schemas/SaleItem' }
+        services:
+          type: array
+          items:
+            type: object
+            properties:
+              monto: { type: number }
+              descripcion: { type: string }
+        payment_method: { type: string, enum: [efectivo, tarjeta, mixto, transferencia], default: efectivo }
+        payment_terms: { type: string, enum: [contado, credito], default: contado }
+        branch_id: { type: integer }
+        caja_id: { type: integer }
+        cliente_tipo: { type: string }
+        cliente_documento: { type: string, nullable: true }
+        nombre_comprobante: { type: string, minLength: 1 }
+        efectivo_recibido: { type: number, nullable: true }
+        discount_percent: { type: number, minimum: 0, maximum: 100 }
+        payment_split:
+          type: object
+          nullable: true
+          properties:
+            efectivo: { type: number }
+            tarjeta: { type: number }
+        note: { type: string }
+    SaleResponse:
+      type: object
+      required: [ok, venta_id]
+      properties:
+        ok: { type: boolean, example: true }
+        venta_id: { type: integer, example: 1532 }
+        total: { type: number, example: 72 }
+        replayed: { type: boolean, description: 'Solo cuando se reconstruye tras una caída (estado committed).' }
+        expiring_alerts:
+          type: array
+          items:
+            type: object
+            properties:
+              product_id: { type: integer }
+              producto: { type: string }
+              lot_number: { type: string }
+              expiry_date: { type: string, format: date }
+              days_left: { type: integer }
+        fel:
+          type: object
+          description: Resultado de la certificación FEL (si está habilitada).
+    Error:
+      type: object
+      required: [ok, error]
+      properties:
+        ok: { type: boolean, example: false }
+        code:
+          type: string
+          enum:
+            - IDEMPOTENCY_KEY_INVALID
+            - IDEMPOTENCY_KEY_REUSED
+            - IDEMPOTENCY_IN_PROGRESS
+            - INSUFFICIENT_STOCK
+            - OUT_OF_STOCK
+            - LOT_NOT_AVAILABLE
+            - LOT_WITHOUT_EXPIRY
+            - PRODUCT_NOT_FOUND
+            - PRODUCT_IS_SERVICE
+            - COMBO_INVALID
+            - CASH_INSUFFICIENT
+        error: { type: string }

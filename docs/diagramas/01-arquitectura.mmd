@@ -1,0 +1,48 @@
+flowchart LR
+  classDef nuevo fill:#dcfce7,stroke:#15803d,stroke-width:2px,color:#14532d
+  classDef ext fill:#f1f5f9,stroke:#64748b,color:#0f172a
+
+  subgraph CLIENTE["Navegador (cajeros, farmacia, enfermería, administración)"]
+    UI["Páginas HTML + JS<br/>ventas.html · inventario.html · hospitalizacion.html ..."]
+    IDK["ventas.html: genera Idempotency-Key<br/>y la reutiliza al reintentar"]:::nuevo
+  end
+
+  subgraph SERVIDOR["Servidor Node.js 22+ / Express 4 (server/)"]
+    direction TB
+    MW["Middlewares base<br/>helmet · sesión · jwtAuth · rate-limit · zod (validate.js)"]
+    IDEM["middleware/idempotency.js<br/>reserva · repetición · 409/422"]:::nuevo
+    subgraph RUTAS["Routers /api"]
+      SALES["sales.js<br/>POST /register_sale"]
+      OTRAS["auth · inventory · cash · purchases<br/>accounting · hospital · system · fel"]
+    end
+    UTIL["db.js (pool pg, withTransaction)<br/>accounting.js · audit · fel.js"]
+    MIG["utils/migrations.js + utils/httpError.js"]:::nuevo
+  end
+
+  DB[("PostgreSQL 16<br/>pos_retail<br/>+ idempotency_keys · schema_migrations")]
+
+  SMTP["Servidor SMTP<br/>(recuperación de contraseña)"]:::ext
+  FEL["Certificador FEL - SAT<br/>(desactivado)"]:::ext
+  TS["Tailscale<br/>(acceso remoto)"]:::ext
+
+  subgraph VERIF["Verificación automatizada (Aporte 2)"]
+    GHA["GitHub Actions<br/>.github/workflows/tests.yml"]:::nuevo
+    TESTS["node:test + supertest<br/>tests/unit · tests/integration"]:::nuevo
+    TDB[("PostgreSQL de pruebas<br/>Docker hhg_test")]:::nuevo
+  end
+
+  UI -->|HTTPS + cookie JWT| MW
+  IDK -.-> UI
+  MW --> IDEM --> SALES
+  MW --> OTRAS
+  SALES --> UTIL
+  OTRAS --> UTIL
+  IDEM --> UTIL
+  UTIL --> DB
+  MIG --> DB
+  UTIL --> SMTP
+  UTIL --> FEL
+  TS -.-> MW
+  GHA --> TESTS
+  TESTS -->|createApp sin puerto| MW
+  TESTS --> TDB

@@ -1,0 +1,95 @@
+erDiagram
+  USERS ||--o{ CAJAS : abre
+  USERS ||--o{ VENTAS : registra
+  USERS ||--o{ IDEMPOTENCY_KEYS : "envía (NUEVO)"
+  BRANCHES ||--o{ CAJAS : tiene
+  BRANCHES ||--o{ LOTS : almacena
+  BRANCHES ||--o{ PRODUCT_STOCKS : resume
+  CAJAS ||--o{ VENTAS : agrupa
+  PRODUCTOS ||--o{ LOTS : "se compra en"
+  PRODUCTOS ||--o{ PRODUCT_STOCKS : "stock por sucursal"
+  PRODUCTOS ||--o{ VENTA_ITEMS : "se vende en"
+  VENTAS ||--|{ VENTA_ITEMS : detalla
+  VENTAS ||--o{ LOT_SALES : "descuenta"
+  LOTS ||--o{ LOT_SALES : "sale de"
+  VENTAS ||--o{ PAYMENTS : "se cobra con"
+  VENTAS |o--o| IDEMPOTENCY_KEYS : "resource_id (NUEVO)"
+
+  USERS {
+    bigint id PK
+    varchar username UK
+    varchar role
+    boolean activo
+  }
+  BRANCHES {
+    bigint id PK
+    varchar name UK
+  }
+  CAJAS {
+    bigint id PK
+    bigint user_id FK
+    bigint branch_id FK
+    timestamp fecha_cierre "NULL = abierta"
+    varchar estado
+  }
+  PRODUCTOS {
+    bigint id PK
+    varchar nombre_comercial
+    varchar tipo "medicamento|servicio|combo"
+    numeric precio_publico
+  }
+  LOTS {
+    bigint id PK
+    bigint product_id FK
+    bigint branch_id FK
+    varchar lot_number
+    date expiry_date "orden FEFO"
+    int quantity
+    numeric sale_price
+  }
+  PRODUCT_STOCKS {
+    bigint id PK
+    bigint product_id FK
+    bigint branch_id FK
+    numeric stock "UK(product_id, branch_id)"
+  }
+  VENTAS {
+    bigint id PK
+    bigint usuario_id FK
+    bigint branch_id FK
+    bigint caja_id FK
+    numeric total
+    timestamp fecha
+  }
+  VENTA_ITEMS {
+    bigint id PK
+    bigint venta_id FK
+    bigint producto_id FK
+    int cantidad
+    numeric precio_unit
+    numeric subtotal
+  }
+  LOT_SALES {
+    bigint id PK
+    bigint sale_id FK
+    bigint lot_id FK
+    int quantity
+  }
+  PAYMENTS {
+    bigint id PK
+    bigint sale_id FK
+    numeric amount
+    varchar payment_type
+  }
+  IDEMPOTENCY_KEYS {
+    bigint id PK
+    varchar scope "UK(scope, user_id, idem_key)"
+    bigint user_id FK
+    varchar idem_key
+    char request_hash "SHA-256"
+    varchar status "CHECK processing|committed|completed"
+    bigint resource_id "venta creada"
+    int response_status
+    jsonb response_body
+    timestamp expires_at "24 h"
+  }

@@ -1,0 +1,9 @@
+stateDiagram-v2
+  [*] --> processing: INSERT ... ON CONFLICT DO NOTHING
+  processing --> committed: venta insertada (misma transacción)
+  committed --> completed: respuesta 2xx guardada
+  processing --> [*]: rechazo 4xx/5xx o ROLLBACK -> DELETE
+  processing --> processing: reserva abandonada más de 120 s -> se retoma
+  committed --> committed: reintento -> respuesta reconstruida {venta_id}
+  completed --> completed: reintento -> respuesta guardada (Idempotent-Replayed)
+  completed --> [*]: expires_at vencido (24 h)
