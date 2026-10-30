@@ -1,25 +1,19 @@
-/**
- * Carga datos ficticios para la demostración en clase (base de desarrollo).
- *   node scripts/seed-demo.js
- * Crea el usuario "demo" (contraseña Demo2026!) con rol cajero (cashier) y tres medicamentos
- * con lotes en la sucursal Principal. Se puede ejecutar varias veces.
- */
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { pool } = require('../server/db');
 const { ensureDatabaseReady } = require('../server/utils/dbMaintenance');
 
-const DEMO_PASSWORD = 'Demo2026!';
+const CAJERO_PASSWORD = 'Demo2026!';
 
 const PRODUCTS = [
-  { name: 'Paracetamol 500mg (DEMO)', price: 2.5, lots: [['PAR-2601', 25, 40], ['PAR-2602', 300, 100]] },
-  { name: 'Amoxicilina 500mg (DEMO)', price: 6, lots: [['AMX-2601', 180, 60]] },
-  { name: 'Insulina NPH (DEMO)', price: 95, lots: [['INS-2601', 90, 1]] }
+  { name: 'Paracetamol 500mg', price: 2.5, lots: [['PAR-2601', 25, 40], ['PAR-2602', 300, 100]] },
+  { name: 'Amoxicilina 500mg', price: 6, lots: [['AMX-2601', 180, 60]] },
+  { name: 'Insulina NPH', price: 95, lots: [['INS-2601', 90, 1]] }
 ];
 
 async function main() {
   if (process.env.NODE_ENV === 'production') {
-    throw new Error('seed-demo no se ejecuta con NODE_ENV=production');
+    throw new Error('cargar-datos no se ejecuta con NODE_ENV=production');
   }
   await ensureDatabaseReady();
 
@@ -28,7 +22,7 @@ async function main() {
   );
   const branchId = Number((await pool.query("SELECT id FROM branches WHERE name = 'Principal'")).rows[0].id);
 
-  const hash = await bcrypt.hash(DEMO_PASSWORD, 10);
+  const hash = await bcrypt.hash(CAJERO_PASSWORD, 10);
   await pool.query(
     `INSERT INTO users (username, email, password, role, cambio_obligatorio, activo)
      VALUES ('demo', 'demo@example.com', $1, 'cashier', FALSE, TRUE)
@@ -68,7 +62,7 @@ async function main() {
     await pool.query('UPDATE productos SET stock = $2 WHERE id = $1', [productId, total]);
     console.log(`  ${p.name}: id ${productId}, stock ${total}`);
   }
-  console.log(`Listo. Usuario: demo / ${DEMO_PASSWORD}  (sucursal Principal id ${branchId})`);
+  console.log(`Listo. Usuario: demo / ${CAJERO_PASSWORD}  (sucursal Principal id ${branchId})`);
 }
 
 main()

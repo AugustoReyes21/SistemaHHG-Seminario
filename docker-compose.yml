@@ -1,4 +1,4 @@
-# Bases PostgreSQL para desarrollo/demostración y para la suite de pruebas.
+# Bases PostgreSQL para desarrollo local y para la suite de pruebas.
 #   docker compose up -d db        -> base de la aplicación (puerto 5432)
 #   docker compose up -d db-test   -> base desechable de pruebas (puerto 5433, en memoria)
 services:

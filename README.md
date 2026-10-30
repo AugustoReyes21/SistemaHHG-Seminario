@@ -23,7 +23,7 @@ npm install
 cp .env.development.example .env      # configuración local sin secretos
 docker compose up -d --wait db        # PostgreSQL 16 en :5432 con pos_retail.sql
 npm run migrate                       # aplica migrations/*.sql (también se aplican al arrancar)
-node scripts/seed-demo.js             # usuario demo / Demo2026! (rol cajero) y medicamentos de prueba
+node scripts/cargar-datos.js          # usuario cajero demo / Demo2026! y medicamentos de prueba
 npm start                             # http://127.0.0.1:3000/login.html
 ```
 
@@ -45,7 +45,7 @@ y cada caso vacía las tablas, así el estado inicial siempre es el mismo. Por s
 En GitHub Actions (`.github/workflows/tests.yml`) la misma suite corre en cada push y pull request
 con un servicio `postgres:16` y publica el reporte JUnit como artefacto.
 
-**Demostrar que las pruebas detectan defectos:** en `evidencias/defectos/` hay parches que rompen el
+**Comprobar que las pruebas detectan defectos:** en `evidencias/defectos/` hay parches que rompen el
 sistema a propósito. Se aplican, se corre la suite y se revierten:
 
 ```bash
@@ -64,21 +64,21 @@ Resultados guardados en `evidencias/defectos/resultados.txt` y `evidencias/resul
 
 ## Verificación del Aporte 1 (idempotencia)
 
-Con el servidor corriendo y la base de demo cargada:
+Con el servidor corriendo y los datos de prueba cargados:
 
 ```bash
-node scripts/demo-idempotencia.js     # misma venta x3, 5 envíos simultáneos, 422, 400 y 409
+node scripts/verificar-idempotencia.js  # misma venta x3, 5 envíos simultáneos, 422, 400 y 409
 node scripts/medir-latencia.js        # costo: 60 ventas sin llave, con llave y repetidas
 ```
 
 Medición local (`evidencias/medicion-latencia.txt`): mediana 406 ms sin llave, 429 ms con llave y 16 ms
 en una repetición (no vuelve a ejecutar la venta).
 
-Salida esperada de la demo (ver `evidencias/demo-idempotencia.txt`): tres intentos con la misma llave devuelven
+Salida esperada (ver `evidencias/verificacion-idempotencia.txt`): tres intentos con la misma llave devuelven
 la misma venta (`HTTP 200 (repetida)`), cinco envíos simultáneos crean una sola venta y el resto recibe
 409; al final hay +2 ventas y −3 unidades.
 
-**En el navegador:** inicie sesión como `demo`, abra caja, agregue un medicamento y cobre. En DevTools →
+**En el navegador:** inicie sesión con el usuario cajero `demo`, abra caja, agregue un medicamento y cobre. En DevTools →
 Network, clic derecho sobre `register_sale` → *Replay XHR*: la respuesta trae `Idempotent-Replayed: true`
 y el Historial de ventas sigue mostrando una sola venta.
 
@@ -119,7 +119,7 @@ las respuestas y los códigos de error:
 - `server/routes/sales.js` — ruta `/register_sale`: middleware, `markCommitted` dentro de la transacción, errores 409/422
 - `server/utils/httpError.js` y manejador de errores en `server/app.js`
 - `ventas.html` — `prepareSaleAttempt()`: una llave por intento, reenvío del mismo cuerpo al reintentar
-- `docs/api/register_sale.openapi.yaml`, `scripts/demo-idempotencia.js`, `scripts/medir-latencia.js`, `scripts/seed-demo.js`
+- `docs/api/register_sale.openapi.yaml`, `scripts/verificar-idempotencia.js`, `scripts/medir-latencia.js`, `scripts/cargar-datos.js`
 
 **Aporte 2 — Pruebas de integración**
 

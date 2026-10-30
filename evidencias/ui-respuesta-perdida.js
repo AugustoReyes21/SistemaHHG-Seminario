@@ -1,12 +1,12 @@
 /**
  * Evidencia en la interfaz real (ventas.html): respuesta perdida + reintento.
  *
- * Requisitos: servidor corriendo en http://127.0.0.1:3000 con la base de demo
- * (scripts/seed-demo.js) y Edge o Chrome instalado.
+ * Requisitos: servidor corriendo en http://127.0.0.1:3000 con los datos de prueba
+ * (scripts/cargar-datos.js) y Edge o Chrome instalado.
  *   npm i --no-save puppeteer-core@23
  *   node evidencias/ui-respuesta-perdida.js
  *
- * Qué hace: inicia sesión como "demo", agrega un medicamento y cobra. La primera
+ * Qué hace: inicia sesión con el usuario cajero "demo", agrega un medicamento y cobra. La primera
  * respuesta de /api/register_sale se corta a propósito DESPUÉS de que el servidor
  * la procesó (como un corte de Wi-Fi). Luego cobra de nuevo y comprueba en la base
  * que solo existe una venta y que el stock bajó una sola vez.
@@ -17,9 +17,9 @@ const path = require('path');
 const puppeteer = require('puppeteer-core');
 const { pool } = require('../server/db');
 
-const BASE = process.env.DEMO_URL || 'http://127.0.0.1:3000';
+const BASE = process.env.APP_BASE_URL || 'http://127.0.0.1:3000';
 const OUT = path.join(__dirname, 'capturas');
-const PRODUCT = 'Amoxicilina 500mg (DEMO)';
+const PRODUCT = 'Amoxicilina 500mg';
 const BROWSERS = [
   'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   'C:/Program Files/Google/Chrome/Application/chrome.exe',

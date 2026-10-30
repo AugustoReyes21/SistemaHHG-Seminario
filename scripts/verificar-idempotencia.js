@@ -1,15 +1,9 @@
-/**
- * Demostración en vivo del Aporte 1 contra el servidor en ejecución.
- *   node scripts/demo-idempotencia.js [http://localhost:3000]
- * Requiere haber corrido scripts/seed-demo.js. Usa solo la API HTTP para vender
- * y consulta la base (misma configuración .env) para mostrar ventas y stock.
- */
 require('dotenv').config();
 const crypto = require('crypto');
 const { pool } = require('../server/db');
 
-const BASE = (process.argv[2] || process.env.DEMO_URL || 'http://localhost:3000').replace(/\/$/, '');
-const PRODUCT = 'Amoxicilina 500mg (DEMO)';
+const BASE = (process.argv[2] || process.env.APP_BASE_URL || 'http://localhost:3000').replace(/\/$/, '');
+const PRODUCT = 'Amoxicilina 500mg';
 let cookie = '';
 
 async function api(method, path, body, headers = {}) {
