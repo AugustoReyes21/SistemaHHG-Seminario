@@ -303,6 +303,42 @@ let ACTIVE_PRODUCT_TAB = 'medicamento';
 let BILLING_DOC = null;
 let HANDLERS_BOUND = false;
 let CHECKOUT_IN_PROGRESS = false;
+
+// Idempotencia (Seminario): una llave por intento de cobro. Si la respuesta se pierde
+// (corte de red, timeout) y el cajero vuelve a cobrar el MISMO carrito, se reenvía la
+// misma llave y el servidor devuelve la venta ya registrada en vez de duplicarla.
+let PENDING_SALE = null; // { fingerprint, key, body }
+
+function newIdempotencyKey() {
+  if (window.crypto && typeof window.crypto.randomUUID === 'function') {
+    return window.crypto.randomUUID();
+  }
+  // randomUUID no existe en HTTP sin TLS; getRandomValues sí.
+  const bytes = new Uint8Array(16);
+  window.crypto.getRandomValues(bytes);
+  return 'k-' + Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function saleFingerprint(payload) {
+  return JSON.stringify({
+    items: payload.items,
+    services: payload.services,
+    branch_id: payload.branch_id,
+    caja_id: payload.caja_id,
+    discount_percent: payload.discount_percent,
+    payment_method: payload.payment_method
+  });
+}
+
+// Devuelve la llave y el cuerpo a enviar. Si es un reintento del mismo carrito se
+// reenvía el cuerpo original, para que el servidor lo reconozca como la misma venta.
+function prepareSaleAttempt(payload) {
+  const fingerprint = saleFingerprint(payload);
+  if (!PENDING_SALE || PENDING_SALE.fingerprint !== fingerprint) {
+    PENDING_SALE = { fingerprint, key: newIdempotencyKey(), body: JSON.stringify(payload) };
+  }
+  return PENDING_SALE;
+}
 let BILLING_PAY_IN_PROGRESS = false;
 let CASH_CLOSE_ADMIN_AUTH = null;
 const BRANCH_STORAGE_KEY = 'pos_branch_id';
@@ -1704,11 +1740,15 @@ function setupHandlers(){
         let venta_id = null;
         let data = null;
 try {
+  const attempt = prepareSaleAttempt(payload);
   const resp = await fetch('api/register_sale', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+      'Idempotency-Key': attempt.key
+    },
     credentials: 'include',
-    body: JSON.stringify(payload)
+    body: attempt.body
   });
 
   try {
@@ -1727,9 +1767,23 @@ try {
     if (receiptTab && !receiptTab.closed) {
       try { receiptTab.close(); } catch (_) {}
     }
-    const msg = (data && (data.error || data.message)) || 'Error procesando la venta';
+    const code = data && data.code;
+    let msg = (data && (data.error || data.message)) || 'Error procesando la venta';
+    if (code === 'IDEMPOTENCY_IN_PROGRESS') {
+      // Se conserva la llave: el siguiente intento recibirá la venta ya registrada.
+      msg = 'La venta anterior todavía se está procesando. Espere unos segundos y presione Cobrar de nuevo.';
+    } else if (code === 'IDEMPOTENCY_KEY_REUSED') {
+      PENDING_SALE = null;
+      msg = 'Ya hubo un intento de cobro de este carrito con otros datos de pago. Revise el Historial de ventas antes de cobrar otra vez.';
+    } else {
+      PENDING_SALE = null;
+    }
     alert(msg);
     return;
+  }
+  PENDING_SALE = null;
+  if (resp.headers.get('Idempotent-Replayed') === 'true') {
+    console.info('Venta recuperada de un intento anterior (no se duplicó).');
   }
 
   if (data && (data.venta_id || data.id || data.sale_id)) {
@@ -1776,7 +1830,8 @@ try {
     try { receiptTab.close(); } catch (_) {}
   }
   console.error('checkout error (cobro):', err);
-  alert('Error en servidor al cobrar');
+  // PENDING_SALE se conserva: si la venta sí llegó al servidor, el reintento no la duplica.
+  alert('No se pudo confirmar el cobro por un problema de conexión. Presione Cobrar de nuevo: el sistema no duplicará la venta.');
   return;
 }
     try {

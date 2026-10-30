@@ -39,6 +39,8 @@ const {
   fetchProductTypeMap
 } = require('../utils/productCatalog');
 const { certifySaleIfEnabled, getFelDocument } = require('../utils/fel');
+const { idempotency } = require('../middleware/idempotency');
+const { conflict, unprocessable } = require('../utils/httpError');
 
 const router = express.Router();
 const asyncHandler = (fn) => (req, res, next) =>
@@ -3246,6 +3248,7 @@ router.post(
 router.post(
   '/register_sale',
   validateBody(validationSchemas.saleRegisterSchema),
+  idempotency({ scope: 'POST /api/register_sale' }),
   asyncHandler(async (req, res) => {
     if (!req.session?.user) return safeJson(res, { ok: false, error: 'No autenticado' }, 401);
     const roleRaw = req.session.user.rol || req.session.user.role || 'user';
@@ -3418,7 +3421,7 @@ router.post(
 
         for (const r of items) {
           if (!productMetaMap.has(r.producto_id)) {
-            throw new Error(`No existe el producto ${r.producto_id}`);
+            throw unprocessable(`No existe el producto ${r.producto_id}`, 'PRODUCT_NOT_FOUND');
           }
           const productMeta = productMetaMap.get(r.producto_id) || {
             name: null,
@@ -3428,7 +3431,7 @@ router.post(
           const productLabel = productMeta.name || `Producto ${r.producto_id}`;
           const productType = normalizeProductType(productMeta.type);
           if (!productTypeUsesInventory(productType) && !productTypeIsCombo(productType)) {
-            throw new Error(`El producto ${productLabel} debe agregarse como servicio, no como medicamento`);
+            throw unprocessable(`El producto ${productLabel} debe agregarse como servicio, no como medicamento`, 'PRODUCT_IS_SERVICE');
           }
 
           const lotSelect = hasLotSalePrice ? 'sale_price' : 'NULL AS sale_price';
@@ -3449,7 +3452,7 @@ router.post(
               db
             );
             if (Number(missingExpiry.rows[0]?.c || 0) > 0) {
-              throw new Error(`Producto ${productLabel} tiene lotes sin fecha de vencimiento`);
+              throw conflict(`Producto ${productLabel} tiene lotes sin fecha de vencimiento`, 'LOT_WITHOUT_EXPIRY');
             }
 
             const lotsRes = requestedLot
@@ -3475,9 +3478,9 @@ router.post(
             const lots = lotsRes.rows || [];
             if (!lots.length) {
               if (requestedLot) {
-                throw new Error(`Lote ${requestedLot} no disponible para ${productLabel}`);
+                throw conflict(`Lote ${requestedLot} no disponible para ${productLabel}`, 'LOT_NOT_AVAILABLE');
               }
-              throw new Error(`No hay lotes disponibles para ${productLabel}`);
+              throw conflict(`No hay lotes disponibles para ${productLabel}`, 'OUT_OF_STOCK');
             }
 
             let remaining = Number(r.cantidad || 0);
@@ -3522,9 +3525,9 @@ router.post(
 
             if (remaining > 0) {
               if (requestedLot) {
-                throw new Error(`Stock insuficiente para lote ${requestedLot} (${productLabel})`);
+                throw conflict(`Stock insuficiente para lote ${requestedLot} (${productLabel})`, 'INSUFFICIENT_STOCK');
               }
-              throw new Error(`Stock insuficiente por lote para ${productLabel}`);
+              throw conflict(`Stock insuficiente por lote para ${productLabel}`, 'INSUFFICIENT_STOCK');
             }
 
             const current = productQty.get(r.producto_id) || 0;
@@ -3534,7 +3537,7 @@ router.post(
 
           const comboComponents = comboComponentsMap.get(r.producto_id) || [];
           if (!comboComponents.length) {
-            throw new Error(`El combo ${productLabel} no tiene componentes configurados`);
+            throw unprocessable(`El combo ${productLabel} no tiene componentes configurados`, 'COMBO_INVALID');
           }
 
           const comboQty = Number(r.cantidad || 0);
@@ -3555,7 +3558,7 @@ router.post(
             const componentLabel = component.nombre_comercial || `Producto ${componentProductId}`;
             const componentType = normalizeProductType(component.tipo);
             if (productTypeIsCombo(componentType)) {
-              throw new Error(`El combo ${productLabel} no puede incluir el combo ${componentLabel}`);
+              throw unprocessable(`El combo ${productLabel} no puede incluir el combo ${componentLabel}`, 'COMBO_INVALID');
             }
             if (!productTypeUsesInventory(componentType)) {
               continue;
@@ -3567,7 +3570,7 @@ router.post(
               db
             );
             if (Number(missingExpiry.rows[0]?.c || 0) > 0) {
-              throw new Error(`El componente ${componentLabel} del combo ${productLabel} tiene lotes sin fecha de vencimiento`);
+              throw conflict(`El componente ${componentLabel} del combo ${productLabel} tiene lotes sin fecha de vencimiento`, 'LOT_WITHOUT_EXPIRY');
             }
             const lotsRes = await query(
               `SELECT id, lot_number, expiry_date, quantity, created_at, ${lotSelect}
@@ -3580,7 +3583,7 @@ router.post(
             );
             const lots = lotsRes.rows || [];
             if (!lots.length) {
-              throw new Error(`El producto ${componentLabel} que pertenece al combo ${productLabel} no tiene stock`);
+              throw conflict(`El producto ${componentLabel} que pertenece al combo ${productLabel} no tiene stock`, 'OUT_OF_STOCK');
             }
 
             let remainingComponent = componentQty;
@@ -3612,7 +3615,7 @@ router.post(
             }
 
             if (remainingComponent > 0) {
-              throw new Error(`El producto ${componentLabel} que pertenece al combo ${productLabel} no tiene stock suficiente`);
+              throw conflict(`El producto ${componentLabel} que pertenece al combo ${productLabel} no tiene stock suficiente`, 'INSUFFICIENT_STOCK');
             }
 
             const current = productQty.get(componentProductId) || 0;
@@ -3620,7 +3623,7 @@ router.post(
           }
 
           if (!hasTrackedComponent) {
-            throw new Error(`El combo ${productLabel} no tiene medicamentos configurados para descontar stock`);
+            throw unprocessable(`El combo ${productLabel} no tiene medicamentos configurados para descontar stock`, 'COMBO_INVALID');
           }
         }
       }
@@ -3639,14 +3642,14 @@ router.post(
           cashReceived = normalizeMoneyValue(cashReceivedInput);
           cashChange = normalizeMoneyValue(cashReceived - saleTotal);
           if (cashChange == null || cashChange < -0.01) {
-            throw new Error('El monto recibido es menor al total');
+            throw unprocessable('El monto recibido es menor al total', 'CASH_INSUFFICIENT');
           }
         }
         if (paymentMethod === 'mixto' && splitCash != null && splitCash >= 0 && cashReceivedInput != null) {
           cashReceived = normalizeMoneyValue(cashReceivedInput);
           cashChange = normalizeMoneyValue(cashReceived - splitCash);
           if (cashChange == null || cashChange < -0.01) {
-            throw new Error('El monto recibido es menor al efectivo a cobrar');
+            throw unprocessable('El monto recibido es menor al efectivo a cobrar', 'CASH_INSUFFICIENT');
           }
         }
       }
@@ -3693,6 +3696,10 @@ router.post(
         db
       );
       const ventaId = Number(saleIns.rows[0].id);
+      // Idempotencia: la llave queda ligada a esta venta dentro de la misma transacción.
+      if (req.idempotency) {
+        await req.idempotency.markCommitted(db, ventaId);
+      }
 
       if (!ventaSinProducto && saleItemLines.length && (await tableExists(db, saleItemsTable))) {
         for (const line of saleItemLines) {

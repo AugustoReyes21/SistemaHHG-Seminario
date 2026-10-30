@@ -1,5 +1,6 @@
 const { query, tableExists, columnExists, quoteIdent } = require('../db');
 const { ensureErrorsTable } = require('./errors');
+const { runMigrations } = require('./migrations');
 
 async function ensureIndex(table, name, columns) {
   if (!(await tableExists(null, table))) return;
@@ -45,6 +46,7 @@ async function ensureIndexes() {
 async function ensureDatabaseReady() {
   await ensureErrorsTable();
   await ensureIndexes();
+  await runMigrations();
 }
 
 module.exports = {
