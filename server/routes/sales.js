@@ -3470,7 +3470,7 @@ router.post(
                   `SELECT id, lot_number, expiry_date, quantity, created_at, ${lotSelect}
                    FROM lots
                    WHERE product_id = $1 AND branch_id = $2 AND quantity > 0 AND expiry_date >= CURRENT_DATE
-                   ORDER BY expiry_date ASC, created_at ASC, id ASC
+                   ORDER BY expiry_date DESC, created_at ASC, id ASC
                    FOR UPDATE`,
                   [r.producto_id, branchId],
                   db
